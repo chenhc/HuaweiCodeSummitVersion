@@ -33,3 +33,7 @@ obj/*
 *depend
 *.layout
 *.cbp
+
+#cmake
+bin/*
+build/*
