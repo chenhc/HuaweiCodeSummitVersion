@@ -4,8 +4,10 @@
 #include "string.h"
 
 using namespace std;
+static int dp[1<<20][20];
+static int route[1<<20][20];
 
-int dp_search(Graph &G, int dp[][20], int route[][20], int S, int v, int demand)
+int dp_search(Graph &G, int S, int v, int demand)
 {
     if(dp[S][v] >= 0)
         return dp[S][v];
@@ -18,7 +20,7 @@ int dp_search(Graph &G, int dp[][20], int route[][20], int S, int v, int demand)
         int u = G._Edge[e]._dst;
         if(!(S>>u & 1))
         {
-            int temp = G._Edge[e]._cost + dp_search(G, dp, route, S|1<<u, u, demand);
+            int temp = G._Edge[e]._cost + dp_search(G, S|1<<u, u, demand);
             if(temp < res)
             {
                 res = temp;
@@ -32,9 +34,6 @@ int dp_search(Graph &G, int dp[][20], int route[][20], int S, int v, int demand)
 
 void dp_search_route(Graph &G)
 {
-    int route[1<<20][20];
-    int dp[1<<20][20];
-
     memset(dp, -1, sizeof(dp));
 
     int _demand = 0;
@@ -46,7 +45,7 @@ void dp_search_route(Graph &G)
     }
     _demand = _demand | (1<<G._dst);
 
-    int result = dp_search(G, dp, route, 1<<G._src, G._src, _demand);
+    int result = dp_search(G, 1<<G._src, G._src, _demand);
     if(result >= INF)
         return;
 
