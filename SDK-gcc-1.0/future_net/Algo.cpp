@@ -42,10 +42,9 @@ void dp_search_route(Graph &G)
 
     int _demand = 0;
 
-    set<int>::iterator it;
-    for(it = G._Specified.begin(); it != G._Specified.end(); it++)
+    for(int i = 0; i < G.specified_num; i++)
     {
-        _demand = _demand | (1<<(*it));
+        _demand = _demand | (1<<i);
     }
     _demand = _demand | (1<<G._dst);
 
@@ -59,7 +58,7 @@ void dp_search_route(Graph &G)
         e = route[S][u];
         u = G._Edge[e]._dst;
         S = S | (1<<u);
-        record_result(G._Edge[e]._linkID);
+        record_result(e);
     }
 }
 
@@ -77,9 +76,8 @@ void Floyd(Graph &G, DistMatrix dist)
         }
 
     /* weight of each edge counts */
-    vector<Link>::const_iterator it = G._Edge.begin();
-    for( ; it != G._Edge.end(); it ++)
-        dist[(*it)._src][(*it)._dst] = (*it)._cost;
+    for(int i = 0; i < G._lNum; i++)
+        dist[G._Edge[i]._src][G._Edge[i]._dst] = G._Edge[i]._cost;
 
     /* floyd */
     for(int k = 0; k < node_num; k++)
@@ -92,31 +90,37 @@ void Floyd(Graph &G, DistMatrix dist)
             }
 }
 
-int dfs(Graph &G, int cur, int dst, Route &path)
+int dfs(Graph &G, int cur, int dst, Route &route)
 {
     if(cur == dst)
     {
-        return path._already.size() == G.specified_num;
+        for(int i = 0; i < G.specified_num; i++)
+        {
+            if( !route._visit[G._Specified[i]]) return false;
+        }
+        return true;
     }
 
     for(int e = G._first[cur]; e != -1; e = G._next[e])
     {
-        cur = G._Edge.at(e)._dst;
+        cur = G._Edge[e]._dst;
 
-        if(!path._visit[cur])
+        if(!route._visit[cur])
         {
-            path.add(G, e);
+            route._visit[cur] = 1;
+            route._path.push_back(e);
 
-            if(dfs(G, cur, dst, path))
+            if(dfs(G, cur, dst, route))
                 return true;
 
-            path.rm(G, e);
+            route._path.pop_back();
+            route._visit[cur] = 0;
+
         }
     }
 
     return false;
 }
-
 
 void dfs_search_route(Graph &G)
 {
@@ -129,81 +133,4 @@ void dfs_search_route(Graph &G)
             record_result(*it);
         }
     }
-}
-
-int enhenced_dfs(Graph &G, DistMatrix dist, int *label, int cur, int dst, Route &path)
-{
-    if(cur == dst)
-    {
-        return path._already.size() == G.specified_num;
-    }
-
-    vector<int> remain(60);
-    vector<int>::iterator end_it = set_difference(G._Specified.begin(), G._Specified.end(),
-                                                  path._already.begin(), path._already.end(),
-                                                  remain.begin());
-
-    for(int e = G._first[cur]; e != -1; e = G._next[e])
-    {
-        cur = G._Edge.at(e)._dst;
-
-        /*剪枝*/
-        int ok = 1;
-        if(label[cur] == 1) /*坏点*/
-        {
-            vector<int>::iterator it;
-            for(it = remain.begin(); it != end_it; it ++)
-            {
-                if(dist[cur][*it] >= INF)
-                {
-                    ok = 0;
-                    break;
-                }
-            }
-        }
-
-        if(ok && !path._visit[cur])
-        {
-            path.add(G, e);
-
-            if(enhenced_dfs(G, dist, label, cur, dst, path))
-                return true;
-
-            path.rm(G, e);
-        }
-    }
-
-    return false;
-
-}
-
-void enhenced_dfs_search_route(Graph &G)
-{
-    DistMatrix dist;
-    Floyd(G, dist);
-    int bad[nMAX] = {0};
-
-    /* 到必经点没有通路的点，被标记为bad */
-    for(int i = 0; i < G._nNum; i++)
-    {
-        for(set<int>::iterator it = G._Specified.begin(); it != G._Specified.end(); it++)
-        {
-            if(dist[i][*it] >= INF)
-            {
-                bad[i] = 1;
-                break;
-            }
-        }
-    }
-
-    Route route;
-    if(enhenced_dfs(G, dist, bad, G._src, G._dst, route))
-    {
-        vector<int>::iterator it;
-        for(it = route._path.begin(); it != route._path.end(); it++)
-        {
-            record_result(*it);
-        }
-    }
-
 }

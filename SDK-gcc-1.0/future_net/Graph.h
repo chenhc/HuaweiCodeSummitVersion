@@ -39,8 +39,10 @@ public:
     int _lNum;
     int _nNum;
     int specified_num;
-    vector<Link> _Edge;
-    set<int> _Specified; /* MAX 60 nodes must be visited */
+
+    Link _Edge[lMAX];
+    int _Specified[60]; /* MAX 60 nodes must be visited */
+    int _must[nMAX]; /*if node is specified, _must[node]=1*/
 
     int _first[nMAX];
     int _next[lMAX];
@@ -54,12 +56,10 @@ class Route
 {
 public:
     vector<int> _path; /* record the edges along the route*/
-    set<int> _already; /* record the id of the specified nodes which already visited*/
+    /* record the id of the specified nodes which already visited*/
     int _visit[nMAX]; /* record if the node has been visited */
 
     Route();
-    void add(const Graph &G, int e);
-    void rm(const Graph &G, int e);
 };
 
 #endif // GRAPH_H_INCLUDED

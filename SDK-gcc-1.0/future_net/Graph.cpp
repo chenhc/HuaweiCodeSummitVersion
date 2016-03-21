@@ -1,27 +1,30 @@
 #include "Graph.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <string>
 #include <string.h>
+#include <string>
 
 Graph::Graph(char *topo[],  int edge_num, char *demand)
 {
     memset(_first, -1, sizeof(_first));
     memset(_pre_first, -1, sizeof(_pre_first));
+    memset(_must, 0, sizeof(_must));
 
     int linkID, srcID, destID, cost, n_cnt = 0;
     for(int i = 0; i <edge_num; i++)
     {
        sscanf(topo[i], "%d,%d,%d,%d", &linkID, &srcID, &destID, &cost);
-       Link e(linkID, srcID, destID, cost);
-       _Edge.push_back(e);
+       _Edge[i]._linkID = linkID;
+       _Edge[i]._src = srcID;
+       _Edge[i]._dst = destID;
+       _Edge[i]._cost = cost;
 
        _next[linkID] = _first[srcID];
        _first[srcID] = linkID;
        _pre_next[linkID] = _pre_first[destID];
        _pre_first[destID] = linkID;
 
-       int temp = srcID>destID? srcID : destID;
+       int temp = srcID>destID ? srcID : destID;
        n_cnt = n_cnt>temp ? n_cnt : temp;
     }
     _lNum = edge_num;
@@ -32,44 +35,25 @@ Graph::Graph(char *topo[],  int edge_num, char *demand)
     string _demand = string(buf);
     string::size_type i = 0;
     string::size_type j = _demand.find('|');
+    int must_num = 0, id = -1;
     while(j != string::npos)
     {
-        _Specified.insert( atoi(_demand.substr(i, j-i).c_str() ) );
+        id = atoi(_demand.substr(i, j-i).c_str());
+        _Specified[must_num++] = id;
+        _must[id] = 1;
         i = ++ j;
         if(_demand.find('|', j) == string::npos)
         {
-            _Specified.insert(atoi(_demand.substr(i, j-i).c_str() ) );
+            _Specified[must_num++] = atoi(_demand.substr(i, j-i).c_str()) ;
             break;
         }
         j = _demand.find('|', j);
     }
-    specified_num = _Specified.size();
+    specified_num = must_num;
 }
 
 Route::Route()
 {
     memset(_visit, 0, sizeof(_visit));
-}
-
-void Route::add(const Graph &G, int e)
-{
-    int node = G._Edge.at(e)._dst;
-    _path.push_back(e);
-    _visit[node] = 1;
-
-    /* if be a specified node */
-    if(G._Specified.count(node))
-        _already.insert(node);
-}
-
-void Route::rm(const Graph &G, int e)
-{
-    int node =  G._Edge.at(e)._dst;
-    _path.pop_back();
-    _visit[node] = 0;
-
-    /* if be a specified node */
-    if(G._Specified.count(node))
-        _already.erase(node);
 }
 
