@@ -8,7 +8,10 @@
 void search_route(char *topo[5000], int edge_num, char *demand)
 {
     Graph G(topo, edge_num, demand);
-    if(G._nNum > 20)
-        return;
-    dp_search_route(G);
+    enhenced_dfs_search_route(G);
+
+    /*if(G._nNum <= 20)
+        dp_search_route(G);
+    else
+        dfs_search_route(G);*/
 }

@@ -36,6 +36,11 @@ Graph::Graph(char *topo[],  int edge_num, char *demand)
     {
         _Specified.insert( atoi(_demand.substr(i, j-i).c_str() ) );
         i = ++ j;
+        if(_demand.find('|', j) == string::npos)
+        {
+            _Specified.insert(atoi(_demand.substr(i, j-i).c_str() ) );
+            break;
+        }
         j = _demand.find('|', j);
     }
     specified_num = _Specified.size();
@@ -54,7 +59,7 @@ void Route::add(const Graph &G, int e)
 
     /* if be a specified node */
     if(G._Specified.count(node))
-        _already.push_back(node);
+        _already.insert(node);
 }
 
 void Route::rm(const Graph &G, int e)
@@ -65,14 +70,6 @@ void Route::rm(const Graph &G, int e)
 
     /* if be a specified node */
     if(G._Specified.count(node))
-        _already.pop_back();
+        _already.erase(node);
 }
 
-void Route::print(const Graph &G)
-{
-    for(int i = 0; i < _path.size(); i++)
-    {
-        Link L = G._Edge[_path[i]];
-        printf("%d -> %d\n", L._src, L._dst);
-    }
-}

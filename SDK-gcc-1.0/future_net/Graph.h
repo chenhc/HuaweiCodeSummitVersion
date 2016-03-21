@@ -54,13 +54,12 @@ class Route
 {
 public:
     vector<int> _path; /* record the edges along the route*/
-    vector<int> _already; /* record the id of the specified nodes which already visited*/
+    set<int> _already; /* record the id of the specified nodes which already visited*/
     int _visit[nMAX]; /* record if the node has been visited */
 
     Route();
     void add(const Graph &G, int e);
     void rm(const Graph &G, int e);
-    void print(const Graph &G);
 };
 
 #endif // GRAPH_H_INCLUDED
