@@ -1,7 +1,12 @@
 #include "route.h"
-#include "lib_io.h"
-#include "lib_time.h"
+#include "lib/lib_io.h"
+#include "lib/lib_time.h"
 #include "stdio.h"
+
+
+Link Edge[lMAX];
+int first[nMAX], next[lMAX], visit[nMAX], must[nMAX];
+int Src, Dst, node_num, must_num;
 
 int main(int argc, char *argv[])
 {
