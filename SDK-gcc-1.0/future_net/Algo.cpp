@@ -2,13 +2,22 @@
 #include "Algo.h"
 #include "lib/lib_record.h"
 #include "string.h"
-#include <utility>
-#include <algorithm>
+#include <stdio.h>
+
+#include <time.h>
+#include <sys/timeb.h>
+#include <errno.h>
+#include <unistd.h>
+#include <signal.h>
 
 
 using namespace std;
 static int dp[1<<20][20];
 static int route[1<<20][20];
+
+static Route optimal_route;
+static int yes = 0;
+static int no = 0;
 
 
 int dp_search(Graph &G, int S, int v, int demand)
@@ -96,10 +105,18 @@ int dfs(Graph &G, int cur, int dst, Route &route)
     {
         for(int i = 0; i < G.specified_num; i++)
         {
-            if( !route._visit[G._Specified[i]]) return false;
+            if( !route._visit[G._Specified[i]])
+            {
+                no ++;
+                return false;
+            }
         }
+        yes ++;
         return true;
     }
+
+    if(yes > 100 || no >100000000)
+        return false;
 
     for(int e = G._first[cur]; e != -1; e = G._next[e])
     {
@@ -109,28 +126,41 @@ int dfs(Graph &G, int cur, int dst, Route &route)
         {
             route._visit[cur] = 1;
             route._path.push_back(e);
+            route._cost += G._Edge[e]._cost;
 
-            if(dfs(G, cur, dst, route))
-                return true;
+            if(dfs(G, cur, dst, route))  /* find a route*/
+            {
+                if(optimal_route._cost == 0)
+                {
+                    optimal_route = route;
+                }
+                else if(route._cost < optimal_route._cost)
+                {
+                    optimal_route = route; /* update the current best */
+                }
+            }
 
+            route._cost -= G._Edge[e]._cost;
             route._path.pop_back();
             route._visit[cur] = 0;
-
         }
     }
-
+    no ++;
     return false;
 }
 
 void dfs_search_route(Graph &G)
 {
     Route route;
-    if(dfs(G, G._src, G._dst, route))
+    dfs(G, G._src, G._dst, route);
+    if(optimal_route._cost < INF && optimal_route._cost != 0)
     {
         vector<int>::iterator it;
-        for(it = route._path.begin(); it != route._path.end(); it++)
+        for(it = optimal_route._path.begin(); it != optimal_route._path.end(); it++)
         {
             record_result(*it);
         }
     }
+    //printf("find a route, cost = %d\n", optimal_route._cost);
 }
+

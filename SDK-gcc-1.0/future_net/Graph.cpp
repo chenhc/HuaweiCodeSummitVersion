@@ -44,6 +44,7 @@ Graph::Graph(char *topo[],  int edge_num, char *demand)
         i = ++ j;
         if(_demand.find('|', j) == string::npos)
         {
+            j = _demand.find('|', j);
             _Specified[must_num++] = atoi(_demand.substr(i, j-i).c_str()) ;
             break;
         }
@@ -54,6 +55,7 @@ Graph::Graph(char *topo[],  int edge_num, char *demand)
 
 Route::Route()
 {
+    _cost = 0;
     memset(_visit, 0, sizeof(_visit));
 }
 

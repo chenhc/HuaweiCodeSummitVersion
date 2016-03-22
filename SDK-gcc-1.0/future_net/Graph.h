@@ -55,6 +55,7 @@ public:
 class Route
 {
 public:
+    int _cost;
     vector<int> _path; /* record the edges along the route*/
     /* record the id of the specified nodes which already visited*/
     int _visit[nMAX]; /* record if the node has been visited */
