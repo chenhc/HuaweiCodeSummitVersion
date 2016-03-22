@@ -9,7 +9,13 @@
 void search_route(char *topo[5000], int edge_num, char *demand)
 {
     Graph G(topo, edge_num, demand);
-    dfs_search_route(G);
+
+    DistMatrix dist;
+    Floyd(G, dist);
+    Route route;
+    specified_partial_connect(G, route, dist);
+
+    //dfs_search_route(G);
 
     /*if(G._nNum <= 20)
         dp_search_route(G);
