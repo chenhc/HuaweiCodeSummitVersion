@@ -17,11 +17,11 @@ int partial_dfs(Graph &G, int cur, int dst, vector<int> &route, int visit[nMAX],
 
 int partial_connect(Graph &G, Component &component, int visit[nMAX]);
 
-int components_connect(Graph &G, Component components[], int cluster_num);
+int components_connect(Graph &G, Component &c_1, Component &c_2, vector<int> &bond, int visit[nMAX]);
 
-int fully_connect(Graph &G, Component components[], int cluster_num);
+int fully_connect(Graph &G, Component components[], int cluster_num, int visit[nMAX]);
 
-int components_interconnect(Graph &G, DistMatrix dist, Component components[], int cluster_num, int visit[nMAX]);
+int components_interconnect(Graph &G, DistMatrix dist, Component components[], int cluster_num, vector<int> bond[], int visit[nMAX]);
 
 void divide_search_route(Graph &G);
 

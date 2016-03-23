@@ -110,12 +110,12 @@ int dfs(Graph &G, int cur, int dst, Route &route)
                 return false;
             }
         }
-        yes ++;
+        //yes ++;
         return true;
     }
 
-    if(yes > 30 || no >100000000)
-        return false;
+    /*if(yes > 30 || no >100000000)
+        return false;*/
 
     for(int e = G._first[cur]; e != -1; e = G._next[e])
     {
@@ -144,7 +144,7 @@ int dfs(Graph &G, int cur, int dst, Route &route)
             route._visit[cur] = 0;
         }
     }
-    no ++;
+    //no ++;
     return false;
 }
 
@@ -175,7 +175,7 @@ void cluster(Graph &G, DistMatrix dist, Component components[], int cluster_num)
             /* choose a cluster head */
             if(!included[G._Specified[i]])
             {
-                //clusters[k].push_back(G._Specified[i]);
+                components[k]._head = G._Specified[i];
                 components[k]._elems.push_back(G._Specified[i]);
                 included[G._Specified[i]] = 1; /* mark the node has been clustered */
 
@@ -191,8 +191,8 @@ void cluster(Graph &G, DistMatrix dist, Component components[], int cluster_num)
                 {
                     pair_i_i x = Q.top();
                     Q.pop();
-                    //clusters[k].push_back(x.second);
                     components[k]._elems.push_back(x.second);
+                    components[k]._tail = x.second;
                     included[x.second] = 1;
                     cnt ++;
                 }
@@ -245,31 +245,53 @@ int partial_connect(Graph &G, Component &component, int visit[nMAX])
 {
     int i = component._elems.size();
     int src = component._elems[0], dst = component._elems[i-1];
-    int radius = 2;
-    if(partial_dfs(G, src, dst, component._path, visit, radius))
-        return true;
-    return false;
+    visit[src] = 1;
+    int radius = 5;
+    return partial_dfs(G, src, dst, component._path, visit, radius);
+
 }
 
 /* 各个cluster连接 */
-int components_connect(Graph &G, Component components[], int cluster_num)
+int components_connect(Graph &G, Component &c_1, Component &c_2, vector<int> &bond, int visit[nMAX])
 {
-
-
+    int src = c_1._tail, dst = c_2._head;
+    visit[src] = 1;
+    visit[dst] = 0;
+    return partial_dfs(G, src, dst, bond, visit, 5);
 }
 
-int fully_connect(Graph &G, Component components[], int cluster_num)
+int fully_connect(Graph &G, Component components[], int cluster_num, int visit[nMAX])
 {
+    Route route_1, route_2;
+    visit[G._src] = 1;
+    if(partial_dfs(G, G._src, components[0]._head, route_1._path, visit, 5))
+    {
+        printf("起点到必经集合入口:\n");
+        for(int i = 0; i < route_1._path.size(); i++)
+            printf("%d->%d\n", G._Edge[route_1._path[i]]._src, G._Edge[route_1._path[i]]._dst);
+    }
 
+    visit[components[cluster_num-1]._tail] = 1;
+    if(partial_dfs(G, components[cluster_num-1]._tail, G._src, route_2._path, visit, 30))
+    {
+        printf("必经集合出口到终点:\n");
+        for(int i = 0; i < route_2._path.size(); i++)
+            printf("%d->%d\n", G._Edge[route_2._path[i]]._src, G._Edge[route_2._path[i]]._dst);
+    }
 }
 
 /* cluster 分类，分别处理，再连起来*/
-int components_interconnect(Graph &G, DistMatrix dist, Component components[], int cluster_num, int visit[nMAX])
+int components_interconnect(Graph &G, DistMatrix dist, Component components[], int cluster_num, vector<int> bond[], int visit[nMAX])
 {
     /* 各个cluster内部自连通 */
     for(int i = 0; i < cluster_num; i++)
     {
-        partial_connect(G, components[i], visit);
+        if(partial_connect(G, components[i], visit))
+        {
+            printf("分量%d内部连接:\n", i);
+            for(int j = 0; j < components[i]._path.size(); j++)
+                printf("%d->%d\n", G._Edge[components[i]._path[j]]._src, G._Edge[components[i]._path[j]]._dst);
+        }
     }
 
     /*
@@ -279,7 +301,17 @@ int components_interconnect(Graph &G, DistMatrix dist, Component components[], i
     */
 
     /* 分量互连 */
-    components_connect(G, components, cluster_num);
+    for(int i = 0; i < cluster_num - 1; i++)
+    {
+        if(components_connect(G, components[i], components[i+1], bond[i], visit))
+        {
+            printf("分量%d 和 %d连接:\n", i, i+1);
+            for(int j = 0; j < bond[i].size(); j++)
+                printf("%d->%d\n", G._Edge[bond[i][j]]._src, G._Edge[bond[i][j]]._dst);
+        }
+
+    }
+
     return 0;
 }
 
@@ -287,14 +319,17 @@ void divide_search_route(Graph &G)
 {
     int cluster_num = G.specified_num/2 + (G.specified_num % 2 != 0 ? 1 : 0);
     Component components[15];
+    vector<int> bond[15];
     int visit[nMAX] = {0};
 
     DistMatrix dist;
     Floyd(G, dist);
     /* 聚类 */
     cluster(G, dist, components, cluster_num);
-    /*分量互连*/
-    components_interconnect(G, dist, components, cluster_num, visit);
     /* 全连接 */
-    fully_connect(G, components, cluster_num);
+    fully_connect(G, components, cluster_num, visit);
+
+    /*分量互连*/
+    components_interconnect(G, dist, components, cluster_num, bond, visit);
+
 }

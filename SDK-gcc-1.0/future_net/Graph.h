@@ -34,13 +34,13 @@ public:
 class Component
 {
 public:
-    int _src;
-    int _dst;
+    int _head;
+    int _tail;
     vector<int> _elems;
     vector<int> _path;
 
-    Component() : _src(-1), _dst(-1) {}
-    Component(int src, int dst) : _src(src), _dst(dst) {}
+    Component() : _head(-1), _tail(-1) {}
+    Component(int src, int dst) : _head(src), _tail(dst) {}
 };
 
 class Graph
