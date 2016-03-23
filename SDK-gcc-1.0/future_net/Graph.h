@@ -31,6 +31,18 @@ public:
     }
 };
 
+class Component
+{
+public:
+    int _src;
+    int _dst;
+    vector<int> _elems;
+    vector<int> _path;
+
+    Component() : _src(-1), _dst(-1) {}
+    Component(int src, int dst) : _src(src), _dst(dst) {}
+};
+
 class Graph
 {
 public:

@@ -163,10 +163,8 @@ void dfs_search_route(Graph &G)
     printf("find a route, cost = %d\n", optimal_route._cost);
 }
 
-void cluster(Graph &G, DistMatrix dist, vector<int> clusters[15])
+void cluster(Graph &G, DistMatrix dist, Component components[], int cluster_num)
 {
-    int cluster_num = G.specified_num/2 + ( G.specified_num % 2 != 0 ? 1 : 0);
-    //vector<int> clusters[15];
     int included[nMAX] = {0};
 
     priority_queue<pair_i_i, vector<pair_i_i>, greater<pair_i_i> > Q;
@@ -177,7 +175,8 @@ void cluster(Graph &G, DistMatrix dist, vector<int> clusters[15])
             /* choose a cluster head */
             if(!included[G._Specified[i]])
             {
-                clusters[k].push_back(G._Specified[i]);
+                //clusters[k].push_back(G._Specified[i]);
+                components[k]._elems.push_back(G._Specified[i]);
                 included[G._Specified[i]] = 1; /* mark the node has been clustered */
 
                 /* add candidate partner for cluster head i*/
@@ -192,7 +191,8 @@ void cluster(Graph &G, DistMatrix dist, vector<int> clusters[15])
                 {
                     pair_i_i x = Q.top();
                     Q.pop();
-                    clusters[k].push_back(x.second);
+                    //clusters[k].push_back(x.second);
+                    components[k]._elems.push_back(x.second);
                     included[x.second] = 1;
                     cnt ++;
                 }
@@ -209,21 +209,13 @@ void cluster(Graph &G, DistMatrix dist, vector<int> clusters[15])
 
 }
 
-/*
-void partial_connect(int src, int dst, vector &route, int visit[nMAX])
+/* 局部dfs找路 */
+int partial_dfs(Graph &G, int cur, int dst, vector<int> &route, int visit[nMAX], int radius)
 {
-
-}
-*/
-
-int partial_dfs(Graph &G, int cur, int dst, vector<int> &route, int visit[nMAX])
-{
-    if(route.size() > 2)
+    if(route.size() > radius)
         return false;
     if(cur == dst)
         return true;
-
-
 
     for(int e = G._first[cur]; e != -1; e = G._next[e])
     {
@@ -237,7 +229,7 @@ int partial_dfs(Graph &G, int cur, int dst, vector<int> &route, int visit[nMAX])
             visit[cur] = 1;
             route.push_back(e);
 
-            if(partial_dfs(G, cur, dst, route, visit))  /* find a route*/
+            if(partial_dfs(G, cur, dst, route, visit, radius))  /* find a route*/
                 return true;
 
             route.pop_back();
@@ -248,21 +240,61 @@ int partial_dfs(Graph &G, int cur, int dst, vector<int> &route, int visit[nMAX])
     return false;
 }
 
-int specified_partial_connect(Graph &G, Route &route, DistMatrix dist)
+/* 使某个cluster分量内部连起来 */
+int partial_connect(Graph &G, Component &component, int visit[nMAX])
 {
-    vector<int> clusters[15];
-    vector<int> routes[15];
+    int i = component._elems.size();
+    int src = component._elems[0], dst = component._elems[i-1];
+    int radius = 2;
+    if(partial_dfs(G, src, dst, component._path, visit, radius))
+        return true;
+    return false;
+}
 
-    cluster(G, dist, clusters);
-    int cluster_num = G.specified_num/2 + ( G.specified_num % 2 != 0 ? 1 : 0);
-    int visit[nMAX] = {0};
+/* 各个cluster连接 */
+int components_connect(Graph &G, Component components[], int cluster_num)
+{
 
+
+}
+
+int fully_connect(Graph &G, Component components[], int cluster_num)
+{
+
+}
+
+/* cluster 分类，分别处理，再连起来*/
+int components_interconnect(Graph &G, DistMatrix dist, Component components[], int cluster_num, int visit[nMAX])
+{
+    /* 各个cluster内部自连通 */
     for(int i = 0; i < cluster_num; i++)
     {
-        partial_dfs(G, clusters[i][0], clusters[i][1], routes[i], visit);
+        partial_connect(G, components[i], visit);
     }
-    for(int j =0; j< cluster_num;j++)
-        for(int i = 0; i< routes[j].size(); i++)
-            printf("%d,", routes[j][i]);
+
+    /*
+    for(int i = 0; i < cluster_num; i++)
+        for(int j = 0; j < components[i]._path.size(); j++)
+            printf("%d\n", components[i]._path[j]);
+    */
+
+    /* 分量互连 */
+    components_connect(G, components, cluster_num);
     return 0;
+}
+
+void divide_search_route(Graph &G)
+{
+    int cluster_num = G.specified_num/2 + (G.specified_num % 2 != 0 ? 1 : 0);
+    Component components[15];
+    int visit[nMAX] = {0};
+
+    DistMatrix dist;
+    Floyd(G, dist);
+    /* 聚类 */
+    cluster(G, dist, components, cluster_num);
+    /*分量互连*/
+    components_interconnect(G, dist, components, cluster_num, visit);
+    /* 全连接 */
+    fully_connect(G, components, cluster_num);
 }

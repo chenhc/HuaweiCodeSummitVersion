@@ -11,10 +11,19 @@ int dfs(Graph &G, int cur, int dst, Route &path);
 
 void dfs_search_route(Graph &G);
 
-void cluster(Graph &G, DistMatrix dist);
+void cluster(Graph &G, DistMatrix dist, Component components[], int cluster_num);
 
-int partial_dfs(Graph &G, int cur, int dst, vector<int> &route, int visit[nMAX]);
+int partial_dfs(Graph &G, int cur, int dst, vector<int> &route, int visit[nMAX], int radius);
 
-int specified_partial_connect(Graph &G, Route &route, DistMatrix dist);
+int partial_connect(Graph &G, Component &component, int visit[nMAX]);
+
+int components_connect(Graph &G, Component components[], int cluster_num);
+
+int fully_connect(Graph &G, Component components[], int cluster_num);
+
+int components_interconnect(Graph &G, DistMatrix dist, Component components[], int cluster_num, int visit[nMAX]);
+
+void divide_search_route(Graph &G);
+
 
 #endif // ALGO_H_INCLUDED
