@@ -10,9 +10,5 @@ void search_route(char *topo[5000], int edge_num, char *demand)
 {
     Graph G(topo, edge_num, demand);
     dfs_search_route(G);
-
-    /*if(G._nNum <= 20)
-        dp_search_route(G);
-    else
-        dfs_search_route(G);*/
+    min_cost_max_flow_find_route(G);
 }

@@ -4,9 +4,9 @@
 #include <vector>
 #include <set>
 
-#define nMAX 600
-#define lMAX 5000
-#define INF 999999
+#define nMAX 150*2
+#define lMAX 1000
+#define INF 9999999
 
 using namespace std;
 

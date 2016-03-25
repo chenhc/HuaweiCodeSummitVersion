@@ -45,7 +45,9 @@ Graph::Graph(char *topo[],  int edge_num, char *demand)
         if(_demand.find('|', j) == string::npos)
         {
             j = _demand.find('|', j);
-            _Specified[must_num++] = atoi(_demand.substr(i, j-i).c_str()) ;
+            id = atoi(_demand.substr(i, j-i).c_str());
+            _Specified[must_num++] = id;
+            _must[id] = 1;
             break;
         }
         j = _demand.find('|', j);

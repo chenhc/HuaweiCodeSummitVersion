@@ -12,64 +12,8 @@
 
 
 using namespace std;
-static int dp[1<<20][20];
-static int route[1<<20][20];
 
 static Route optimal_route;
-static int yes = 0;
-static int no = 0;
-
-
-int dp_search(Graph &G, int S, int v, int demand)
-{
-    if(dp[S][v] >= 0)
-        return dp[S][v];
-    if((S & demand) == demand && v == G._dst)
-        return dp[S][v] = 0;
-
-    int res = INF;
-    for(int e = G._first[v]; e != -1; e = G._next[e])
-    {
-        int u = G._Edge[e]._dst;
-        if(!(S>>u & 1))
-        {
-            int temp = G._Edge[e]._cost + dp_search(G, S|1<<u, u, demand);
-            if(temp < res)
-            {
-                res = temp;
-                route[S][v] = e;
-            }
-        }
-    }
-
-    return dp[S][v] = res;
-}
-
-void dp_search_route(Graph &G)
-{
-    memset(dp, -1, sizeof(dp));
-
-    int _demand = 0;
-
-    for(int i = 0; i < G.specified_num; i++)
-    {
-        _demand = _demand | (1<<i);
-    }
-    _demand = _demand | (1<<G._dst);
-
-    int result = dp_search(G, 1<<G._src, G._src, _demand);
-    if(result >= INF)
-        return;
-
-    int u = G._src, S = 1<<G._src, e = -1;
-    while(u != G._dst)
-    {
-        e = route[S][u];
-        u = G._Edge[e]._dst;
-        S = S | (1<<u);
-        record_result(e);
-    }
-}
 
 void Floyd(Graph &G, DistMatrix dist)
 {
@@ -106,17 +50,10 @@ int dfs(Graph &G, int cur, int dst, Route &route)
         for(int i = 0; i < G.specified_num; i++)
         {
             if( !route._visit[G._Specified[i]])
-            {
-                no ++;
                 return false;
-            }
         }
-        yes ++;
         return true;
     }
-
-    if(yes > 100 || no >100000000)
-        return false;
 
     for(int e = G._first[cur]; e != -1; e = G._next[e])
     {
@@ -145,7 +82,6 @@ int dfs(Graph &G, int cur, int dst, Route &route)
             route._visit[cur] = 0;
         }
     }
-    no ++;
     return false;
 }
 
@@ -161,6 +97,94 @@ void dfs_search_route(Graph &G)
             record_result(*it);
         }
     }
-    //printf("find a route, cost = %d\n", optimal_route._cost);
+    printf("find a route, optimal_cost = %d\n", optimal_route._cost);
 }
+
+
+//求网络最小费用最大流,邻接阵形式
+//返回最大流量,flow返回每条边的流量,netcost返回总费用
+//传入网络节点数n,容量mat,单位费用cost,源点source,汇点sink
+
+int min_cost_max_flow(int n, int mat[][nMAX], int cost[][nMAX], int source, int sink, int flow[][nMAX], int& netcost)
+{
+	int pre[nMAX], min[nMAX], d[nMAX], i, j, t, tag;
+	if (source == sink)
+        return INF;
+	for (i=0; i<n; i++)
+		for (j=0; j<n; flow[i][j++]=0);
+
+	for (netcost=0;;){
+        for (i=0;i<n;i++)
+            pre[i]=0,min[i]=INF;
+		//通过bellman_ford寻找最短路，即最小费用可改进路
+		for (pre[source]=source+1,min[source]=0,d[source]=INF,tag=1;tag;)
+			for (tag=t=0;t<n;t++)
+				if (d[t])
+					for (i=0;i<n;i++)
+						if (j=mat[t][i]-flow[t][i]&&min[t]+cost[t][i]<min[i])
+							tag=1,min[i]=min[t]+cost[t][i],pre[i]=t+1,d[i]=d[t]<j?d[t]:j;
+						else if (j=flow[i][t]&&min[t]<INF&&min[t]-cost[i][t]<min[i])
+							tag=1,min[i]=min[t]-cost[i][t],pre[i]=-t-1,d[i]=d[t]<j?d[t]:j;
+		if (!pre[sink])	break;
+		for (netcost+=min[sink]*d[i=sink];i!=source;)
+			if (pre[i]>0)
+				flow[pre[i]-1][i]+=d[sink],i=pre[i]-1;
+			else
+				flow[i][-pre[i]-1]-=d[sink],i=-pre[i]-1;
+	}
+	for (j=i=0;i<n;j+=flow[source][i++]);
+	return j;
+}
+
+void min_cost_max_flow_find_route(Graph &G)
+{
+    /*建邻接矩阵*/
+    DistMatrix d;
+    for(int i=0; i<G._nNum; i++)
+        for(int j=0; j<G._nNum; j++)
+            d[i][j] = (i == j? 0 : INF);
+    /*原图权值矩阵*/
+    for(int e=0; e<G._lNum; e++)
+        d[G._Edge[e]._src][G._Edge[e]._dst] = G._Edge[e]._cost;
+
+    /* 带宽矩阵，花费矩阵，流量矩阵（待求的流量分布）*/
+    DistMatrix mat, cost, flow;
+
+    for(int i=0; i < 2*G._nNum; i++)
+        for(int j=0; j < 2*G._nNum; j++) {
+            mat[i][j] = 1;  //全部边为单位流量
+            flow[i][j] = 0; //初始流量分布为0
+            cost[i][j] = INF; //初始花费为INF
+        }
+    /* 原图转化 */
+    //映射 i'=i+N
+    for(int i=0; i < G._nNum; i++){
+        cost[i][i] = 0;
+        if(G._must[i] || i == G._src || i == G._dst){
+            cost[i][i+G._nNum] = -INF; //cost[i][i']=inf,使其必经
+            cost[i+G._nNum][i] = INF;
+        }
+    }
+
+    for(int i = 0; i < G.specified_num; i++)
+    {
+        int s = G._Specified[i];
+        int _s = s + G._nNum;
+        for(int j = 0; j < G._nNum; j++)
+        {
+            if(s != j)
+                cost[_s][j] = d[s][j]; //cost[i'][j] = d[i][j]，承包原像的出口
+        }
+    }
+
+    int net_cost = 0;
+    int net_flow = min_cost_max_flow(2*G._nNum, mat, cost, G._src, G._dst+G._nNum, flow, net_cost);
+
+    printf("net_cost = %d\nnet_flow = %d\n", net_cost, net_flow);
+
+    //for(int i=0; i<0)
+
+}
+
+
 
