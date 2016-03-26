@@ -14,6 +14,9 @@
 using namespace std;
 
 static Route optimal_route;
+static DistMatrix dist;
+static DistMatrix r_dist;
+static int up_bound;
 
 void Floyd(Graph &G, DistMatrix dist)
 {
@@ -43,6 +46,35 @@ void Floyd(Graph &G, DistMatrix dist)
             }
 }
 
+
+void r_Floyd(Graph &G, DistMatrix r_dist)
+{
+    /*initialize distence matrix*/
+    int node_num = G._nNum;
+    for(int i = 0; i < node_num; i++)
+        for(int j = 0; j < node_num; j++)
+        {
+            if(i == j)
+                r_dist[i][j] = 0;
+            else
+                r_dist[i][j] = INF;
+        }
+
+    /* weight of each edge counts */
+    for(int i = 0; i < G._lNum; i++)
+        r_dist[G._Edge[i]._dst][G._Edge[i]._src]= G._Edge[i]._cost;
+
+    /* floyd */
+    for(int k = 0; k < node_num; k++)
+        for(int i = 0; i < node_num; i++)
+            for(int j = 0; j < node_num; j++)
+            {
+                int temp = r_dist[i][k] + r_dist[k][j];
+                if(temp < r_dist[i][j])
+                    r_dist[i][j] = temp;
+            }
+}
+
 int dfs(Graph &G, int cur, int dst, Route &route)
 {
     if(cur == dst)
@@ -54,6 +86,10 @@ int dfs(Graph &G, int cur, int dst, Route &route)
         }
         return true;
     }
+
+    if(route._cost + dist[cur][dst] > up_bound)
+       return false;
+
 
     for(int e = G._first[cur]; e != -1; e = G._next[e])
     {
@@ -70,11 +106,14 @@ int dfs(Graph &G, int cur, int dst, Route &route)
                 if(optimal_route._cost == 0)
                 {
                     optimal_route = route;
+                    up_bound = 0.9*route._cost;
                 }
                 else if(route._cost < optimal_route._cost)
                 {
                     optimal_route = route; /* update the current best */
+                    up_bound = 0.9*route._cost;
                 }
+                //return true;
             }
 
             route._cost -= G._Edge[e]._cost;
@@ -88,6 +127,23 @@ int dfs(Graph &G, int cur, int dst, Route &route)
 void dfs_search_route(Graph &G)
 {
     Route route;
+
+    Floyd(G, dist);
+    r_Floyd(G, r_dist);
+
+    up_bound = 0;
+    for(int i = 0; i < G.specified_num; i++)
+    {
+        int v = G._Specified[i];
+        int sum = dist[G._src][v] + r_dist[G._dst][v];
+        if(sum > up_bound)
+            up_bound = sum;
+    }
+    up_bound *= 2;
+
+
+    printf("cut at %d\n", up_bound);
+
     dfs(G, G._src, G._dst, route);
     if(optimal_route._cost < INF && optimal_route._cost != 0)
     {
@@ -101,40 +157,7 @@ void dfs_search_route(Graph &G)
 }
 
 
-//求网络最小费用最大流,邻接阵形式
-//返回最大流量,flow返回每条边的流量,netcost返回总费用
-//传入网络节点数n,容量mat,单位费用cost,源点source,汇点sink
 
-int min_cost_max_flow(int n, int mat[][nMAX], int cost[][nMAX], int source, int sink, int flow[][nMAX], int& netcost)
-{
-	int pre[nMAX], min[nMAX], d[nMAX], i, j, t, tag;
-	if (source == sink)
-        return INF;
-	for (i=0; i<n; i++)
-		for (j=0; j<n; flow[i][j++]=0);
-
-	for (netcost=0;;){
-        for (i=0;i<n;i++)
-            pre[i]=0,min[i]=INF;
-		//通过bellman_ford寻找最短路，即最小费用可改进路
-		for (pre[source]=source+1,min[source]=0,d[source]=INF,tag=1;tag;)
-			for (tag=t=0;t<n;t++)
-				if (d[t])
-					for (i=0;i<n;i++)
-						if (j=mat[t][i]-flow[t][i]&&min[t]+cost[t][i]<min[i])
-							tag=1,min[i]=min[t]+cost[t][i],pre[i]=t+1,d[i]=d[t]<j?d[t]:j;
-						else if (j=flow[i][t]&&min[t]<INF&&min[t]-cost[i][t]<min[i])
-							tag=1,min[i]=min[t]-cost[i][t],pre[i]=-t-1,d[i]=d[t]<j?d[t]:j;
-		if (!pre[sink])	break;
-		for (netcost+=min[sink]*d[i=sink];i!=source;)
-			if (pre[i]>0)
-				flow[pre[i]-1][i]+=d[sink],i=pre[i]-1;
-			else
-				flow[i][-pre[i]-1]-=d[sink],i=-pre[i]-1;
-	}
-	for (j=i=0;i<n;j+=flow[source][i++]);
-	return j;
-}
 
 void min_cost_max_flow_find_route(Graph &G)
 {
@@ -178,11 +201,10 @@ void min_cost_max_flow_find_route(Graph &G)
     }
 
     int net_cost = 0;
-    int net_flow = min_cost_max_flow(2*G._nNum, mat, cost, G._src, G._dst+G._nNum, flow, net_cost);
+    int net_flow;//= min_cost_max_flow(2*G._nNum, mat, cost, G._src, G._dst+G._nNum, flow, net_cost);
 
     printf("net_cost = %d\nnet_flow = %d\n", net_cost, net_flow);
 
-    //for(int i=0; i<0)
 
 }
 

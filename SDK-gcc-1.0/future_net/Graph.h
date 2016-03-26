@@ -4,7 +4,7 @@
 #include <vector>
 #include <set>
 
-#define nMAX 150*2
+#define nMAX 300
 #define lMAX 1000
 #define INF 9999999
 
@@ -62,6 +62,7 @@ public:
 
     Route();
 };
+
 
 #endif // GRAPH_H_INCLUDED
 

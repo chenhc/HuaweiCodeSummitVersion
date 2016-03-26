@@ -3,6 +3,7 @@
 
 
 void Floyd(Graph &G, DistMatrix dist);
+void r_Floyd(Graph &G, DistMatrix dist);
 
 int dfs(Graph &G, int cur, int dst, Route &path);
 
