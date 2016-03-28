@@ -4,9 +4,8 @@
 #include "string.h"
 #include <stdio.h>
 #include <time.h>
-#include <sys/time.h>
-#include <unistd.h>
 #include <queue>
+#include <stack>
 
 using namespace std;
 
@@ -14,20 +13,14 @@ static Route optimal_route;
 static DistMatrix dist;
 
 static float bound;
-time_t t_s, t_e;
+static int start, stop;
 
-typedef pair<int, int> pii;
-
-typedef struct state
-{
-    int cur;
-    int parent;
-}State;
+typedef pair<int, int> pair_i_i;
 
 void Floyd(Graph &G)
 {
     /*initialize distence matrix*/
-    int node_num = G._nNum;
+    int node_num = G.nNum;
     for(int i = 0; i < node_num; i++)
         for(int j = 0; j < node_num; j++)
         {
@@ -38,8 +31,8 @@ void Floyd(Graph &G)
         }
 
     /* weight of each edge counts */
-    for(int i = 0; i < G._lNum; i++)
-        dist[G._Edge[i]._src][G._Edge[i]._dst] = G._Edge[i]._cost;
+    for(int i = 0; i < G.lNum; i++)
+        dist[G.Edge[i].src][G.Edge[i].dst] = G.Edge[i].cost;
 
     /* floyd */
     for(int k = 0; k < node_num; k++)
@@ -58,196 +51,190 @@ int dfs(Graph &G, int cur, int dst, Route &route)
     {
         for(int i = 0; i < G.specified_num; i++)
         {
-            if( !route._visit[G._Specified[i]])
+            if( !route.visit[G.Specified[i]])
                 return false;
         }
         return true;
     }
 
-    t_e = time(NULL);
-    if(difftime(t_e, t_s) > 8)
-        return false;
-
-    if (route._cost + dist[cur][dst] > bound)
-       return false;
-
-
-    for(int e = G._first[cur]; e != -1; e = G._next[e])
+    for(int e = G.first[cur]; e != -1; e = G.next[e])
     {
-        cur = G._Edge[e]._dst;
+        cur = G.Edge[e].dst;
 
-        if(!route._visit[cur])
+        if(!route.visit[cur])
         {
-            route._visit[cur] = 1;
-            route._path.push_back(e);
-            route._cost += G._Edge[e]._cost;
+            route.visit[cur] = 1;
+            route.path.push_back(e);
+            route.cost += G.Edge[e].cost;
 
             if(dfs(G, cur, dst, route))  /* find a route*/
-            {
+                return true;
 
-                if(optimal_route._cost == 0)
-                {
-                    optimal_route = route;
-                    bound = route._cost;
-                }
-                else if(route._cost < optimal_route._cost)
-                {
-                    optimal_route = route; /* update the current best */
-                    bound =  route._cost;
-                }
-                //return true;
-            }
-
-            route._cost -= G._Edge[e]._cost;
-            route._path.pop_back();
-            route._visit[cur] = 0;
+            route.cost -= G.Edge[e].cost;
+            route.path.pop_back();
+            route.visit[cur] = 0;
         }
     }
     return false;
 }
 
+int dfs(Graph &G, int center, int radiu, bool visit[lMAX])
+{
+    if(radiu == 0)
+        return true;
+
+    for(int e = G.first[center]; e != -1; e = G.next[e]) {
+        if(!visit[e]){
+            visit[e] = 1;
+            Link &edge = G.Edge[e];
+            edge.cost = -INF;
+            dfs(G, edge.dst, radiu-1, visit);
+        }
+    }
+}
+
+int greedy_dfs(Graph &G, int cur, int dst, Route &route)
+{
+    if(cur == dst)
+    {
+        for(int i = 0; i < G.specified_num; i++)
+        {
+            if( !route.visit[G.Specified[i]])
+                return false;
+        }
+        return true;
+    }
+
+    priority_queue<pair_i_i, vector<pair_i_i>, greater<pair_i_i> > Q;
+    for(int e = G.first[cur]; e != -1; e = G.next[e])
+        Q.push(make_pair(G.Edge[e].cost, e));
+
+    while(!Q.empty())
+    {
+        pair_i_i x = Q.top();
+        Q.pop();
+
+        int e = x.second;
+        cur = G.Edge[e].dst;
+
+        if(!route.visit[cur])
+        {
+            route.visit[cur] = 1;
+            route.path.push_back(e);
+            route.cost += G.Edge[e].cost;
+
+            if(dfs(G, cur, dst, route))  /* find a route*/
+                return true;
+
+            route.cost -= G.Edge[e].cost;
+            route.path.pop_back();
+            route.visit[cur] = 0;
+        }
+    }
+    return false;
+}
+
+int greedy_search_route(Graph &G)
+{
+    Graph _G(G);
+
+    bool visit[lMAX];
+    for(int i = 0; i < G.specified_num; i++) {
+        int v = G.Specified[i];
+        memset(visit, 0, sizeof(visit));
+        dfs(_G, v, 3, visit);
+    }
+
+    Route route;
+    if(greedy_dfs(_G, _G.src, _G.dst, route)) {
+        int cost = 0;
+        vector<int>::iterator it;
+        printf("src=%d dst=%d\n", G.src, G.dst);
+        for(it = route.path.begin(); it != route.path.end(); it++)
+        {
+            Link &e = G.Edge[*it];
+            cost += e.cost;
+            printf("%d->%d\n", e.src, e.dst);
+        }
+        printf("find a route, cost = %d\n", cost);
+    }
+
+}
+
 
 void dfs_search_route(Graph &G)
 {
-    t_s = time(NULL);
+    start = clock();
     Route route;
 
-    /*if(G._nNum  <  30 &&  G._lNum < 120)
-        bound = 999999;
-    else{
-        Floyd(G);
-        bound = 0;
-        for(int i = 0; i < G.specified_num; i++) {
-            int v = G._Specified[i];
-            int sum = dist[G._src][v] + dist[v][G._dst];
-            if(sum > bound)
-                bound = sum;
-        }
-        bound *= 2;
-    }*/
+    dfs(G, G.src, G.dst, route);
+    printf("find a route, cost = %d\n", route.cost);
 
-    Floyd(G);
-    priority_queue<pii, vector<pii>, greater<pii> > q;
-    bool used[nMAX] = {0};
-    int sum = 0;
-    int cur = G._src;
-    for(int i=0; i < G.specified_num; i++)
-        q.push(make_pair(dist[cur][G._Specified[i]], G._Specified[i]));
-    pii x = q.top();
-    int next = x.second;
-    sum += x.first;
-    used[next] = 1;
-    cur = next;
-    while(!q.empty()) q.pop();
-    for(;;) {
-        int i = 0;
-        for(int i=0; i<G.specified_num; i++)
-            if(!used[G._Specified[i]])
-                q.push(make_pair(dist[cur][G._Specified[i]], G._Specified[i]));
-        if(q.empty()) break;
-        pii x = q.top();
-        next = x.second;
-        sum += x.first;
-        used[next] = 1;
-        cur = next;
-        while(!q.empty()) q.pop();
-    }
-    bound = 1.2*sum;
-    printf("cut at %lf\n",  bound);
-    if(bound > INF)
-        return;
-
-    dfs(G, G._src, G._dst, route);
-    if(optimal_route._cost < INF && optimal_route._cost != 0)
+    if(optimal_route.cost < INF && optimal_route.cost != 0)
     {
         vector<int>::iterator it;
-        for(it = optimal_route._path.begin(); it != optimal_route._path.end(); it++)
+        for(it = optimal_route.path.begin(); it != optimal_route.path.end(); it++)
         {
             record_result(*it);
         }
     }
-    printf("find a route, optimal_cost = %d\n", optimal_route._cost);
-    printf("time = %lf\n", difftime(t_e, t_s));
+    printf("find a route, optimal_cost = %d\n", optimal_route.cost);
+    stop = clock();
 }
 
-int bi_bfs(Graph &G, int src, int dst, Route &route)
+void Dijkstra(Graph &G, int src, int D[nMAX], int path[nMAX]) /*保存路径,path[nodeID] = edgeID*/
 {
-    //距离矩阵
-    for(int i = 0; i < G._nNum; i++)
-        for(int j = 0; j < G._nNum; j++)
+    memset(path, -1, sizeof(path));
+    /* 最小值优先的优先队列 */
+
+    /*标号数组*/
+    for(int i=0; i<G.nNum; i++)
+        D[i] = (i==src ? 0: INF);
+
+    /*优先队列*/
+    priority_queue<pair_i_i, vector<pair_i_i>, greater<pair_i_i> > Q;
+
+    /*起点进入优先队列*/
+    Q.push(make_pair(D[src], src));
+    while(!Q.empty())
+    {
+        /*队列中具有最小标号的*/
+        pair_i_i x = Q.top();
+        Q.pop();
+        int u = x.second;
+        /* 避免节点的重复处理 */
+        if(x.first != D[u]) continue;
+        //if( u == dst) /*到达终点*/
+            //break;
+
+        /*更新节点u出发的所有边 */
+        for(int e = G.first[u]; e != -1; e = G.next[e])
         {
-            if(i == j)
-                dist[i][j] = 0;
-            else
-                dist[i][j] = INF;
+            int v = G.Edge[e].dst;
+            if(D[u] + G.Edge[e].cost < D[v])
+            {
+                D[v] = D[u] + G.Edge[e].cost;
+                Q.push(make_pair(D[v], v)); /*标号更新成功，加入优先队列*/
+                path[v] = e; /*更新反向路径*/
+            }
         }
 
-    //判断两点是否相邻
-    for(int i = 0; i < G._lNum; i++)
-        dist[G._Edge[i]._src][G._Edge[i]._dst] = G._Edge[i]._cost;
+    }
 
-    vector<State> Q, rQ;
-    int head[2] = {0, 0};
-    int tail[2] = {-1, -1};
-    Q.push_back((State){src, -1});
-    tail[0]++;
-    rQ.push_back((State){dst, -1});
-    tail[1]++;
-    for(;;) {
-        //if(tail[0] - head[0] >= tail[1] - head[1]) {
-        if(1) {
-            //先扩展正向
-            //正向扩展一层
-            int _head = head[0], _tail = tail[0];
-            for(int i = _head; i <= _tail; i++) {
-                State &s = Q[i];
-                //不断取当前状态的节点的相邻节点来扩展
-                for(int j = G._first[s.cur]; j != -1; j = G._next[j]) {
-                    Link &e = G._Edge[j];
-                    //遍历反向队列，检查和反向有无相遇
-                    for(int k = head[1]; k <= tail[1]; k++) {
-                        State &rs = rQ[k];
-                        if(e._dst == rs.cur)
-                            return true;
-                        //不是交点，正向入队
-                        else {
-                            Q.push_back((State){e._dst, i});
-                            tail[0] ++;
-                            break;
-                        }
-                    }
-                }
-                //队头元素处理完毕
-                head[0] ++;
-            }
-            //反向扩展一层
-            _head = head[1], _tail = tail[1];
-            for(int i = _head; i <= _tail; i++) {
-                State &s = rQ[i];
-                //不断取当前状态的节点的相邻节点来扩展
-                for(int j = G._pre_first[s.cur]; j != -1; j = G._pre_next[j]) {
-                    Link &e = G._Edge[j];
-                    //遍历正向队列，检查和正向有无相遇
-                    for(int k = head[0]; k <= tail[0]; k++) {
-                        State &rs = Q[k];
-                        if(e._src == rs.cur)
-                            return true;
-                        //不是交点，正向入队
-                        else {
-                            rQ.push_back((State){e._src, i});
-                            tail[1] ++;
-                            break;
-                        }
-                    };
-                }
-                //队头元素处理完毕
-                head[1] ++;
-            }
-
-        }//if
-    }//for(;;)
-
+    //保存子路径
+    /*int v = dst;
+    stack<int> _path;
+    while(v != src) {
+        route.visit[v] = 1;
+        _path.push(path[v]);
+        v = G.Edge[path[v]].src;
+    }
+    while(!_path.empty()) {
+        route.path.push_back(_path.top());
+        _path.pop();
+    }*/
 }
+
 
 
 

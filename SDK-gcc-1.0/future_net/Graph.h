@@ -6,7 +6,7 @@
 
 #define nMAX 300
 #define lMAX 1000
-#define INF 9999999
+#define INF 99999
 
 using namespace std;
 
@@ -15,39 +15,39 @@ typedef int DistMatrix[nMAX][nMAX];
 class Link
 {
 public:
-    int _linkID;
-    int _src;
-    int _dst;
-    int _cost;
+    int linkID;
+    int src;
+    int dst;
+    int cost;
 
-    Link(): _linkID(-1), _src(-1), _dst(-1), _cost(INF) {}
+    Link(): linkID(-1), src(-1), dst(-1), cost(INF) {}
 
-    Link(int linkid, int src, int dst, int cost)
-    : _linkID(linkid), _src(src), _dst(dst), _cost(cost) {}
+    Link(int _linkid, int _src, int _dst, int _cost)
+    : linkID(_linkid), src(_src), dst(_dst), cost(_cost) {}
 
     bool operator < (const Link &e) const
     {
-        return _cost < e._cost;
+        return cost < e.cost;
     }
 };
 
 class Graph
 {
 public:
-    int _src;
-    int _dst;
-    int _lNum;
-    int _nNum;
+    int src;
+    int dst;
+    int lNum;
+    int nNum;
     int specified_num;
 
-    Link _Edge[lMAX];
-    int _Specified[60]; /* MAX 60 nodes must be visited */
-    int _must[nMAX]; /*if node is specified, _must[node]=1*/
+    Link Edge[lMAX];
+    int Specified[60]; /* MAX 60 nodes must be visited */
+    int must[nMAX]; /*if node is specified, _must[node]=1*/
 
-    int _first[nMAX];
-    int _next[lMAX];
-    int _pre_first[nMAX];
-    int _pre_next[lMAX];
+    int first[nMAX];
+    int next[lMAX];
+    int pre_first[nMAX];
+    int pre_next[lMAX];
 
     Graph(char *topo[],  int edge_num, char *demand);
 };
@@ -55,10 +55,10 @@ public:
 class Route
 {
 public:
-    int _cost;
-    vector<int> _path; /* record the edges along the route*/
+    int cost;
+    vector<int> path; /* record the edges along the route*/
     /* record the id of the specified nodes which already visited*/
-    int _visit[nMAX]; /* record if the node has been visited */
+    int visit[nMAX]; /* record if the node has been visited */
 
     Route();
 };
