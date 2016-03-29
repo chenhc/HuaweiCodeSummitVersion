@@ -134,30 +134,85 @@ int greedy_dfs(Graph &G, int cur, int dst, Route &route)
     return false;
 }
 
-int greedy_search_route(Graph &G)
+int greedy_search_route(Graph &_G)
 {
-    Graph _G(G);
-
-    bool visit[lMAX];
-    for(int i = 0; i < G.specified_num; i++) {
-        int v = G.Specified[i];
-        memset(visit, 0, sizeof(visit));
-        dfs(_G, v, 3, visit);
-    }
-
+    Graph G(_G);
+    int src = G.src, dst = G.dst;
     Route route;
-    if(greedy_dfs(_G, _G.src, _G.dst, route)) {
-        int cost = 0;
-        vector<int>::iterator it;
-        printf("src=%d dst=%d\n", G.src, G.dst);
-        for(it = route.path.begin(); it != route.path.end(); it++)
+
+    //先隔离终点的通路
+    for(int e = G.pre_first[dst]; e != -1; e = G.pre_next[e]) G.Edge[e].cost = INF;
+    for(int e = G.first[dst]; e != -1; e = G.next[e]) G.Edge[e].cost = INF;
+
+    int D[nMAX], path[nMAX];
+    int Min = INF;
+    Dijkstra(G, src, D, path);
+    int cnt = G.specified_num;
+    while((cnt--) > G.specified_num/3) {
+        for(int i = 0; i < G.specified_num; i++) {
+            int v = G.Specified[i];
+            if(route.visit[v]) continue;
+            Min = D[v];
+            dst = v;
+            break;
+        }
+        for(int i = 0; i < G.specified_num; i++) {
+            int v = G.Specified[i];
+            if(route.visit[v]) continue;
+            if(D[v] < Min){
+                Min = D[v];
+                dst = v;
+            }
+        }
+        //最后一个必经点处理完毕
+        if(route.visit[dst]) break;
+        //没有路到下一个必经点
+        if(Min >= INF) break;
+
+        int u = dst;
+        stack<int> _path;
+        while(u != src) {
+            route.visit[u] = 1;
+            for(int e = G.pre_first[u]; e != -1; e = G.pre_next[e]) G.Edge[e].cost = INF;
+            if(u != dst)
+                for(int e = G.first[u]; e != -1; e = G.next[e]) G.Edge[e].cost = INF;
+            _path.push(path[u]);
+            u = G.Edge[path[u]].src;
+        }
+        route.visit[u] = 1;
+        for(int e = G.pre_first[u]; e != -1; e = G.pre_next[e]) G.Edge[e].cost = INF;
+        for(int e = G.first[u]; e != -1; e = G.next[e]) G.Edge[e].cost = INF;
+
+        while(!_path.empty()) {
+            route.path.push_back(_path.top());
+            _path.pop();
+        }
+
+        src = dst;
+        Dijkstra(G, src, D, path);
+        Floyd(G);
+        printf("--------\n");
+        for(vector<int>::iterator it = route.path.begin(); it != route.path.end(); it++)
         {
+
             Link &e = G.Edge[*it];
-            cost += e.cost;
             printf("%d->%d\n", e.src, e.dst);
         }
-        printf("find a route, cost = %d\n", cost);
     }
+
+
+    //解禁终点
+    for(int e = G.pre_first[dst]; e != -1; e = G.pre_next[e]) G.Edge[e].cost = _G.Edge[e].cost;
+    for(int e = G.first[dst]; e != -1; e = G.next[e]) G.Edge[e].cost = _G.Edge[e].cost;
+    dfs(G, dst, G.dst, route);
+
+    printf("FINAL--------\n");
+    for(vector<int>::iterator it = route.path.begin(); it != route.path.end(); it++)
+    {
+        Link &e = G.Edge[*it];
+        printf("%d->%d\n", e.src, e.dst);
+    }
+    printf("steps = %d\n", route.path.size());
 
 }
 

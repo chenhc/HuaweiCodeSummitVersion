@@ -6,7 +6,7 @@
 
 #define nMAX 300
 #define lMAX 1000
-#define INF 99999
+#define INF 99999999
 
 using namespace std;
 
