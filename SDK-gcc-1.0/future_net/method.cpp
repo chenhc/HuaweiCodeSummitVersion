@@ -6,16 +6,9 @@
 #include <set>
 #include <vector>
 #include <string.h> //memset
+#include <time.h>
 
 #define MAX_V 600
-
-//边定义
-typedef struct Edge
-{
-    int id;
-    int to;
-    int cost;
-}Edge;
 
 std::vector<Edge> G[MAX_V]; //图的邻接表
 std::vector<Edge> rG[MAX_V]; //反向边邻接表
@@ -23,8 +16,6 @@ std::vector<Edge> rG[MAX_V]; //反向边邻接表
 std::vector<int> PostOrder; //scc第一次dfs过程中的后序存放数组
 bool used[MAX_V]; //scc在dfs过程中的访问标记数组
 int cmp[MAX_V]; //拓扑序
-int depth;
-int cnt = 0;
 
 int src, dst; //起点，终点
 int V = 0, E = 0; //顶点数，边数
@@ -36,6 +27,12 @@ bool isMust[MAX_V]; //是否为必经点
 std::vector<int> v_path; //节点表示的路径
 std::vector<int> e_path; //边表示的路径
 bool visit[MAX_V]; //已访问节点标记
+std::vector<int> optimal_e_path;
+std::vector<int> optimal_v_path;
+int total_cost = 0;
+int optimal_cost = 0;
+
+int start, end;
 
 
 //主要函数实现
@@ -130,29 +127,33 @@ int SCC::scc()
     return k;
 }
 
-bool SCC::dfs_search_route(int cur, int edge)
+bool SCC::dfs_search_route(Edge &edge)
 {
+    int cur = edge.to;
     if(cur == dst) {
         for(std::set<int>::iterator it = neccesity.begin(); it != neccesity.end(); it++)
             if(!visit[*it])
                 return false;
         v_path.push_back(cur);
-        e_path.push_back(edge);
+        e_path.push_back(edge.id);
         return true;
     }
 
+    end = clock();
+    if(end - start > 8000)
+        return false;
+
     int k = scc();
     for(std::set<int>::iterator it = remain.begin(); it != remain.end(); it++) {
-        if(  cmp[cur] > cmp[*it] || cmp[*it] > cmp[dst] ) { //belongs[cur] > belongs[*it] ||
-            cnt ++;
+        if(  cmp[cur] > cmp[*it] || cmp[*it] > cmp[dst] ) { 
             return false;
         }
     }
 
     visit[cur] = 1;
     v_path.push_back(cur);
-    if(cur != src)
-        e_path.push_back(edge);
+    e_path.push_back(edge.id);
+    total_cost += edge.cost;
     if(isMust[cur]) {
         remain.erase(cur);
         already.insert(cur);
@@ -161,8 +162,18 @@ bool SCC::dfs_search_route(int cur, int edge)
     for(int i = 0; i < G[cur].size(); i++) {
         Edge &e = G[cur][i];
         if( !visit[e.to] )
-            if( dfs_search_route(e.to, e.id) )
-                return true;
+            if( dfs_search_route(e) ) {
+                if(optimal_cost == 0) {
+                    optimal_cost = total_cost;
+                    optimal_e_path = e_path;
+                    optimal_v_path = v_path;
+                }
+                else if (total_cost < optimal_cost) {
+                    optimal_cost = total_cost;
+                    optimal_e_path = e_path;
+                    optimal_v_path = v_path;
+                }
+            }
     }
 
     visit[cur] = 0;
@@ -172,25 +183,32 @@ bool SCC::dfs_search_route(int cur, int edge)
     }
     v_path.pop_back();
     e_path.pop_back();
+    total_cost -= edge.cost;
 
     return false;
 }
 
 void SCC::search_route()
 {
+    start = clock();
     memset(visit, 0, sizeof(visit));
-    depth = 5;
-    if(dfs_search_route(src)) {
-        for(std::vector<int>::iterator it = e_path.begin(); it != e_path.end(); it++)
+
+    visit[src] = 1;
+    v_path.push_back(src);
+    for(int i = 0; i < G[src].size(); i++) {
+        dfs_search_route(G[src][i]);
+    }
+
+    if(optimal_cost != 0) {
+        for(std::vector<int>::iterator it = optimal_e_path.begin(); it != optimal_e_path.end(); it++)
             record_result(*it);
     }
 
     printf("src=%d,dst=%d\n", src, dst);
-    for(int i = 0; i < v_path.size(); i++)
-        printf("%d->", v_path[i]);
+    for(int i = 0; i < optimal_v_path.size(); i++)
+        printf("%d->", optimal_v_path[i]);
     printf("Finish!\n");
-    printf("cnt=%d\n", cnt);
-
+    printf("optimal cost=%d\n", optimal_cost);
 
 }
 
