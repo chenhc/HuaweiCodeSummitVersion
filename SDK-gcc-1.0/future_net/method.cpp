@@ -134,18 +134,19 @@ bool SCC::dfs_search_route(Edge &edge)
         for(std::set<int>::iterator it = neccesity.begin(); it != neccesity.end(); it++)
             if(!visit[*it])
                 return false;
+        total_cost += edge.cost;
         v_path.push_back(cur);
         e_path.push_back(edge.id);
         return true;
     }
 
     end = clock();
-    if(end - start > 8000)
-        return false;
+//    if(end - start > 8000)
+//        return false;
 
     int k = scc();
     for(std::set<int>::iterator it = remain.begin(); it != remain.end(); it++) {
-        if(  cmp[cur] > cmp[*it] || cmp[*it] > cmp[dst] ) { 
+        if(  cmp[cur] > cmp[*it] || cmp[*it] > cmp[dst] ) {
             return false;
         }
     }
@@ -165,13 +166,13 @@ bool SCC::dfs_search_route(Edge &edge)
             if( dfs_search_route(e) ) {
                 if(optimal_cost == 0) {
                     optimal_cost = total_cost;
-                    optimal_e_path = e_path;
-                    optimal_v_path = v_path;
+                    optimal_e_path.assign(e_path.begin(), e_path.end());
+                    optimal_v_path.assign(v_path.begin(), v_path.end());
                 }
                 else if (total_cost < optimal_cost) {
                     optimal_cost = total_cost;
-                    optimal_e_path = e_path;
-                    optimal_v_path = v_path;
+                    optimal_e_path.assign(e_path.begin(), e_path.end());
+                    optimal_v_path.assign(v_path.begin(), v_path.end());
                 }
             }
     }
@@ -197,6 +198,9 @@ void SCC::search_route()
     v_path.push_back(src);
     for(int i = 0; i < G[src].size(); i++) {
         dfs_search_route(G[src][i]);
+        memset(visit, 0, sizeof(visit));
+        visit[src] = 1;
+        total_cost = 0;
     }
 
     if(optimal_cost != 0) {
