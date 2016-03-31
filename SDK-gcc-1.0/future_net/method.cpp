@@ -23,6 +23,8 @@ std::vector<Edge> rG[MAX_V]; //反向边邻接表
 std::vector<int> PostOrder; //scc第一次dfs过程中的后序存放数组
 bool used[MAX_V]; //scc在dfs过程中的访问标记数组
 int cmp[MAX_V]; //拓扑序
+int depth;
+int cnt = 0;
 
 int src, dst; //起点，终点
 int V = 0, E = 0; //顶点数，边数
@@ -57,6 +59,7 @@ void init_Graph(char *topo[5000], int edge_num, char *demand)
     V ++;
     E = edge_num;
 
+    memset(isMust, 0, sizeof(isMust));
     char buf[100];
     sscanf(demand, "%d,%d,%s" , &src, &dst, buf);
     std::string _demand = std::string(buf);
@@ -66,6 +69,7 @@ void init_Graph(char *topo[5000], int edge_num, char *demand)
     {
         int id = atoi(_demand.substr(i, j-i).c_str());
         neccesity.insert(id);
+        remain.insert(id);
         isMust[id] = true;
         i = ++ j;
         if(_demand.find('|', j) == std::string::npos)
@@ -73,6 +77,7 @@ void init_Graph(char *topo[5000], int edge_num, char *demand)
             j = _demand.find('|', j);
             id = atoi(_demand.substr(i, j-i).c_str());
             neccesity.insert(id);
+            remain.insert(id);
             isMust[id] = true;
             break;
         }
@@ -125,24 +130,29 @@ int SCC::scc()
     return k;
 }
 
-bool SCC::dfs_search_route(int cur)
+bool SCC::dfs_search_route(int cur, int edge)
 {
     if(cur == dst) {
         for(std::set<int>::iterator it = neccesity.begin(); it != neccesity.end(); it++)
             if(!visit[*it])
                 return false;
+        v_path.push_back(cur);
+        e_path.push_back(edge);
         return true;
     }
 
     int k = scc();
     for(std::set<int>::iterator it = remain.begin(); it != remain.end(); it++) {
-        if(  cmp[*it] > cmp[dst] ) { //belongs[cur] > belongs[*it] ||
+        if(  cmp[cur] > cmp[*it] || cmp[*it] > cmp[dst] ) { //belongs[cur] > belongs[*it] ||
+            cnt ++;
             return false;
         }
     }
 
     visit[cur] = 1;
     v_path.push_back(cur);
+    if(cur != src)
+        e_path.push_back(edge);
     if(isMust[cur]) {
         remain.erase(cur);
         already.insert(cur);
@@ -151,7 +161,7 @@ bool SCC::dfs_search_route(int cur)
     for(int i = 0; i < G[cur].size(); i++) {
         Edge &e = G[cur][i];
         if( !visit[e.to] )
-        if( dfs_search_route(e.to) )
+            if( dfs_search_route(e.to, e.id) )
                 return true;
     }
 
@@ -161,20 +171,26 @@ bool SCC::dfs_search_route(int cur)
         remain.insert(cur);
     }
     v_path.pop_back();
+    e_path.pop_back();
 
     return false;
 }
 
 void SCC::search_route()
 {
-    memset(isMust, 0, sizeof(isMust));
     memset(visit, 0, sizeof(visit));
-    dfs_search_route(src);
+    depth = 5;
+    if(dfs_search_route(src)) {
+        for(std::vector<int>::iterator it = e_path.begin(); it != e_path.end(); it++)
+            record_result(*it);
+    }
 
     printf("src=%d,dst=%d\n", src, dst);
     for(int i = 0; i < v_path.size(); i++)
         printf("%d->", v_path[i]);
-    printf("%d\n", dst);
+    printf("Finish!\n");
+    printf("cnt=%d\n", cnt);
+
 
 }
 
