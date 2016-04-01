@@ -8,7 +8,6 @@
 #include <string.h> //memset
 #include <time.h>
 
-#define MAX_V 600
 
 std::vector<Edge> G[MAX_V]; //图的邻接表
 std::vector<Edge> rG[MAX_V]; //反向边邻接表
@@ -32,8 +31,9 @@ std::vector<int> optimal_v_path;
 int total_cost = 0;
 int optimal_cost = 0;
 
-int start, end;
+int start, stop;
 
+DistMatrix dist; //距离矩阵
 
 //主要函数实现
 //添加边
@@ -127,9 +127,8 @@ int SCC::scc()
     return k;
 }
 
-bool SCC::dfs_search_route(int cur, Edge &edge)
+bool SCC::dfs_search_route(int cur)
 {
-
     //当前边到达终点
     if(cur == dst) {
         for(std::set<int>::iterator it = neccesity.begin(); it != neccesity.end(); it++)
@@ -137,10 +136,6 @@ bool SCC::dfs_search_route(int cur, Edge &edge)
                 return false;
 
         //当前边到达终点，且经过所有必经点
-        total_cost += edge.cost;
-        v_path.push_back(cur); //添加当前节点到路径
-        e_path.push_back(edge.id); //添加当前边到路径
-        //printf("total_cost = %d\n", total_cost);
         if(optimal_cost == 0) {
             optimal_cost = total_cost;
             optimal_e_path.assign(e_path.begin(), e_path.end());
@@ -151,16 +146,12 @@ bool SCC::dfs_search_route(int cur, Edge &edge)
             optimal_e_path.assign(e_path.begin(), e_path.end());
             optimal_v_path.assign(v_path.begin(), v_path.end());
         }
-
-        total_cost -= edge.cost;
-        v_path.pop_back(); //添加当前节点到路径
-        e_path.pop_back(); //添加当前边到路径
         return true;
     }
 
     //超时强制退出
-    end = clock();
-    if(end - start > 9000)
+    stop = clock();
+    if(stop - start > 9000)
         return false;
 
     //强连通分解
@@ -171,52 +162,58 @@ bool SCC::dfs_search_route(int cur, Edge &edge)
         }
     }
 
-    //采纳当前节点
-    visit[cur] = 1;
-    v_path.push_back(cur);
-    e_path.push_back(edge.id);
-    total_cost += edge.cost;
-    if(isMust[cur]) {
-        remain.erase(cur);
-        already.insert(cur);
-    }
-
     for(int i = 0; i < G[cur].size(); i++) {
         Edge &e = G[cur][i];
-        if( !visit[e.to] )
-            dfs_search_route(e.to, e);
-    }
+        if(!visit[e.to]) {
+            for(std::set<int>::iterator it = remain.begin(); it != remain.end(); it++) {
+                if( cmp[cur] > cmp[*it] ) {
+                    continue;
+                }
+            }
+            //拓扑序满足
+            //采纳该节点
+            visit[e.to] = 1;
+            if(isMust[e.to]) {
+                remain.erase(e.to);
+                already.insert(e.to);
+            }
+            v_path.push_back(e.to);
+            e_path.push_back(e.id);
+            total_cost += e.cost;
 
-    visit[cur] = 0;
-    if(isMust[cur]) {
-        already.erase(cur);
-        remain.insert(cur);
-    }
-    v_path.pop_back();
-    e_path.pop_back();
-    total_cost -= edge.cost;
+            dfs_search_route(e.to);
+
+            visit[e.to] = 0;
+            if(isMust[e.to]) {
+                already.erase(e.to);
+                remain.insert(e.to);
+            }
+            v_path.pop_back();
+            e_path.pop_back();
+            total_cost -= e.cost;
+
+        }// if(!visit[e.to])
+    }// for(int i = 0; i < G[cur].size(); i++)
 
     return false;
 }
+
 
 void SCC::search_route()
 {
     start = clock();
     memset(visit, 0, sizeof(visit));
 
-    //visit[src] = 1;
+    visit[src] = 0;
     v_path.push_back(src);
-    for(int i = 0; i < G[src].size(); i++) {
-        memset(visit, 0, sizeof(visit));
-        visit[src] = 1;
-        total_cost = 0;
-        dfs_search_route(G[src][i].to, G[src][i]);
-    }
+    dfs_search_route(src);
 
     if(optimal_cost != 0) {
         for(std::vector<int>::iterator it = optimal_e_path.begin(); it != optimal_e_path.end(); it++)
             record_result(*it);
     }
+
+    //freopen("output.txt", "w", stdout);
 
     printf("src=%d,dst=%d\n", src, dst);
     for(int i = 0; i < optimal_v_path.size(); i++)
@@ -226,6 +223,92 @@ void SCC::search_route()
 
 }
 
+
+void floyd()
+{
+    for (int i = 0; i < V; i++)
+        for (int j = 0; j < V; j++) {
+            dist[i][j] = (i == j ? 0 : INF);
+        }
+    for(int v = 0; v < V; v++)
+        for(int i = 0; i < G[v].size(); i++) {
+            Edge &e = G[v][i];
+            dist[v][e.to] = e.cost;
+        }
+
+    /* floyd */
+    for(int k = 0; k < V; k++)
+        for(int i = 0; i < V; i++)
+            for(int j = 0; j < V; j++)
+            {
+                int temp = dist[i][k] + dist[k][j];
+                if(temp < dist[i][j])
+                    dist[i][j] = temp;
+            }
+}
+
+bool Brute_Force::dfs(int cur)
+{
+    if(cur == dst) {
+        for(std::set<int>::iterator it = neccesity.begin(); it != neccesity.end(); it++)
+            if(!visit[*it])
+                return false;
+
+        if(optimal_cost == 0) {
+            optimal_cost = total_cost;
+            optimal_e_path.assign(e_path.begin(), e_path.end());
+            optimal_v_path.assign(v_path.begin(), v_path.end());
+        }
+        else if (total_cost < optimal_cost) {
+            optimal_cost = total_cost;
+            optimal_e_path.assign(e_path.begin(), e_path.end());
+            optimal_v_path.assign(v_path.begin(), v_path.end());
+        }
+        return true;
+    }
+
+    for(int i = 0; i < G[cur].size(); i++) {
+        Edge &e = G[cur][i];
+        if(!visit[e.to]) {
+            visit[e.to] = 1;
+            v_path.push_back(e.to);
+            e_path.push_back(e.id);
+            total_cost += e.cost;
+
+            dfs(e.to);
+
+            visit[e.to] = 0;
+            v_path.pop_back();
+            e_path.pop_back();
+            total_cost -= e.cost;
+        }
+    }
+
+    return false;
+}
+
+void Brute_Force::search_route()
+{
+    start = clock();
+    memset(visit, 0, sizeof(visit));
+
+    visit[src] = 1;
+    v_path.push_back(src);
+    dfs(src);
+
+    if(optimal_cost != 0) {
+        for(std::vector<int>::iterator it = optimal_e_path.begin(); it != optimal_e_path.end(); it++)
+            record_result(*it);
+    }
+
+    //freopen("output.txt", "w", stdout);
+
+    printf("src=%d,dst=%d\n", src, dst);
+    for(int i = 0; i < optimal_v_path.size(); i++)
+        printf("%d->", optimal_v_path[i]);
+    printf("Finish!\n");
+    printf("optimal cost=%d\n", optimal_cost);
+}
 
 
 
