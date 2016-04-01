@@ -17,7 +17,7 @@ namespace SCC {
     void dfs(int v);
     void rdfs(int v, int k);
     int scc();
-    bool dfs_search_route(Edge &edge);
+    bool dfs_search_route(int cur, Edge &edge);
     void search_route();
 }
 

@@ -127,23 +127,43 @@ int SCC::scc()
     return k;
 }
 
-bool SCC::dfs_search_route(Edge &edge)
+bool SCC::dfs_search_route(int cur, Edge &edge)
 {
-    int cur = edge.to;
+
+    //当前边到达终点
     if(cur == dst) {
         for(std::set<int>::iterator it = neccesity.begin(); it != neccesity.end(); it++)
             if(!visit[*it])
                 return false;
+
+        //当前边到达终点，且经过所有必经点
         total_cost += edge.cost;
-        v_path.push_back(cur);
-        e_path.push_back(edge.id);
+        v_path.push_back(cur); //添加当前节点到路径
+        e_path.push_back(edge.id); //添加当前边到路径
+        //printf("total_cost = %d\n", total_cost);
+        if(optimal_cost == 0) {
+            optimal_cost = total_cost;
+            optimal_e_path.assign(e_path.begin(), e_path.end());
+            optimal_v_path.assign(v_path.begin(), v_path.end());
+        }
+        else if (total_cost < optimal_cost) {
+            optimal_cost = total_cost;
+            optimal_e_path.assign(e_path.begin(), e_path.end());
+            optimal_v_path.assign(v_path.begin(), v_path.end());
+        }
+
+        total_cost -= edge.cost;
+        v_path.pop_back(); //添加当前节点到路径
+        e_path.pop_back(); //添加当前边到路径
         return true;
     }
 
+    //超时强制退出
     end = clock();
-//    if(end - start > 8000)
-//        return false;
+    if(end - start > 9000)
+        return false;
 
+    //强连通分解
     int k = scc();
     for(std::set<int>::iterator it = remain.begin(); it != remain.end(); it++) {
         if(  cmp[cur] > cmp[*it] || cmp[*it] > cmp[dst] ) {
@@ -151,6 +171,7 @@ bool SCC::dfs_search_route(Edge &edge)
         }
     }
 
+    //采纳当前节点
     visit[cur] = 1;
     v_path.push_back(cur);
     e_path.push_back(edge.id);
@@ -163,18 +184,7 @@ bool SCC::dfs_search_route(Edge &edge)
     for(int i = 0; i < G[cur].size(); i++) {
         Edge &e = G[cur][i];
         if( !visit[e.to] )
-            if( dfs_search_route(e) ) {
-                if(optimal_cost == 0) {
-                    optimal_cost = total_cost;
-                    optimal_e_path.assign(e_path.begin(), e_path.end());
-                    optimal_v_path.assign(v_path.begin(), v_path.end());
-                }
-                else if (total_cost < optimal_cost) {
-                    optimal_cost = total_cost;
-                    optimal_e_path.assign(e_path.begin(), e_path.end());
-                    optimal_v_path.assign(v_path.begin(), v_path.end());
-                }
-            }
+            dfs_search_route(e.to, e);
     }
 
     visit[cur] = 0;
@@ -194,13 +204,13 @@ void SCC::search_route()
     start = clock();
     memset(visit, 0, sizeof(visit));
 
-    visit[src] = 1;
+    //visit[src] = 1;
     v_path.push_back(src);
     for(int i = 0; i < G[src].size(); i++) {
-        dfs_search_route(G[src][i]);
         memset(visit, 0, sizeof(visit));
         visit[src] = 1;
         total_cost = 0;
+        dfs_search_route(G[src][i].to, G[src][i]);
     }
 
     if(optimal_cost != 0) {
