@@ -151,7 +151,7 @@ bool SCC::dfs_search_route(int cur)
 
     //超时强制退出
     stop = clock();
-    if(stop - start > 9000)
+    if(stop - start > 7000)
         return false;
 
     //强连通分解
@@ -266,6 +266,11 @@ bool Brute_Force::dfs(int cur)
         }
         return true;
     }
+
+    //超时强制退出
+    stop = clock();
+    if(stop - start > 7000)
+        return false;
 
     for(int i = 0; i < G[cur].size(); i++) {
         Edge &e = G[cur][i];
