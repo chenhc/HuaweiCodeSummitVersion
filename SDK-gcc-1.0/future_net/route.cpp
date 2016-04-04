@@ -14,8 +14,9 @@ void search_route(char *topo[5000], int edge_num, char *demand)
 //    if(V <= 100)
 //        Brute_Force::search_route();
 //    else
-        SCC::search_route();
-    //Brute_Force::search_route();
+//        SCC::search_route();
+    Heuristic::bfs();
+
 }
 
 

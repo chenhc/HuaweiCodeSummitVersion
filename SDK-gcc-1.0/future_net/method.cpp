@@ -5,6 +5,9 @@
 #include <string> //string
 #include <set>
 #include <vector>
+#include <map>
+#include <utility>
+#include <queue>
 #include <string.h> //memset
 #include <time.h>
 
@@ -321,7 +324,51 @@ void Brute_Force::search_route()
     printf("optimal cost=%d\n", optimal_cost);
 }
 
+void Heuristic::bfs()
+{
+    State _begin = State(src);
+    std::priority_queue<State, std::vector<State>, std::less<State> > OPEN;
+    std::map<int, State> CLOSED;
 
+    bool success = false;
+    OPEN.push(_begin);
+    while(!OPEN.empty() && !success) {
+        //从open移除
+        State father = OPEN.top();
+        OPEN.pop();
+        //bfs扩展遇到终点了，并且必经点访问完毕！
+        if(father.cur == dst && father.already == neccesity.size()) {
+            success = true;
+            break;
+        }
+        //加入close
+        int cur = father.cur;
+        CLOSED.insert(std::make_pair(cur, father));
+        //状态扩展
+        for(int i = 0; i < G[cur].size(); i++) {
+            Edge &e = G[cur][i];
+            State child(e.to);
+            child.steps = father.steps++;
+            child.already = father.already;
+            child.pre = cur;
+            child.rEdge = e.id;
+            if(isMust[e.to])
+                child.already ++;
+
+            //如果在close中
+            if(CLOSED.find(e.to) != CLOSED.end()) {
+                //但是新节点的必经点指标更优
+                if(child.already > CLOSED[e.to].already) {
+                    CLOSED.erase(e.to);
+                }
+            }
+
+            //加入open,即使队列有相同元素，优先级覆盖
+            OPEN.push(child);
+        }
+    }
+
+}
 
 
 
