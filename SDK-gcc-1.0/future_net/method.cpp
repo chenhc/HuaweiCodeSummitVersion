@@ -29,7 +29,7 @@ bool visit[MAX_V]; //已访问节点标记
 std::vector<int> optimal_e_path;
 std::vector<int> optimal_v_path;
 int total_cost = 0;
-int optimal_cost = 0;
+int optimal_cost = INF;
 
 int start, stop;
 
@@ -136,7 +136,7 @@ bool SCC::dfs_search_route(int cur)
                 return false;
 
         //当前边到达终点，且经过所有必经点
-        if(optimal_cost == 0) {
+        if(optimal_cost >= INF) {
             optimal_cost = total_cost;
             optimal_e_path.assign(e_path.begin(), e_path.end());
             optimal_v_path.assign(v_path.begin(), v_path.end());
@@ -151,7 +151,7 @@ bool SCC::dfs_search_route(int cur)
 
     //超时强制退出
     stop = clock();
-    if(stop - start > 7000)
+    if((double)(stop - start)/CLOCKS_PER_SEC > 8.5)
         return false;
 
     //强连通分解
@@ -160,37 +160,43 @@ bool SCC::dfs_search_route(int cur)
         if(  cmp[cur] > cmp[*it] || cmp[*it] > cmp[dst] ) {
             return false;
         }
+        if(total_cost + dist[cur][*it] + dist[*it][dst] > optimal_cost)
+            return false;
     }
 
     for(int i = 0; i < G[cur].size(); i++) {
         Edge &e = G[cur][i];
+        bool ok = true;
         if(!visit[e.to]) {
             for(std::set<int>::iterator it = remain.begin(); it != remain.end(); it++) {
                 if( cmp[cur] > cmp[*it] ) {
-                    continue;
+                    ok = false;
+                    break;
                 }
             }
             //拓扑序满足
             //采纳该节点
-            visit[e.to] = 1;
-            if(isMust[e.to]) {
-                remain.erase(e.to);
-                already.insert(e.to);
-            }
-            v_path.push_back(e.to);
-            e_path.push_back(e.id);
-            total_cost += e.cost;
+            if(ok) {
+                visit[e.to] = 1;
+                if(isMust[e.to]) {
+                    remain.erase(e.to);
+                    already.insert(e.to);
+                }
+                v_path.push_back(e.to);
+                e_path.push_back(e.id);
+                total_cost += e.cost;
 
-            dfs_search_route(e.to);
+                dfs_search_route(e.to);
 
-            visit[e.to] = 0;
-            if(isMust[e.to]) {
-                already.erase(e.to);
-                remain.insert(e.to);
-            }
-            v_path.pop_back();
-            e_path.pop_back();
-            total_cost -= e.cost;
+                visit[e.to] = 0;
+                if(isMust[e.to]) {
+                    already.erase(e.to);
+                    remain.insert(e.to);
+                }
+                v_path.pop_back();
+                e_path.pop_back();
+                total_cost -= e.cost;
+            }//if(ok)
 
         }// if(!visit[e.to])
     }// for(int i = 0; i < G[cur].size(); i++)
@@ -254,7 +260,7 @@ bool Brute_Force::dfs(int cur)
             if(!visit[*it])
                 return false;
 
-        if(optimal_cost == 0) {
+        if(optimal_cost >= INF) {
             optimal_cost = total_cost;
             optimal_e_path.assign(e_path.begin(), e_path.end());
             optimal_v_path.assign(v_path.begin(), v_path.end());
@@ -269,7 +275,7 @@ bool Brute_Force::dfs(int cur)
 
     //超时强制退出
     stop = clock();
-    if(stop - start > 7000)
+    if((double)(stop - start)/CLOCKS_PER_SEC > 8.5)
         return false;
 
     for(int i = 0; i < G[cur].size(); i++) {
