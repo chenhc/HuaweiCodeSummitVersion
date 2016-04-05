@@ -330,13 +330,16 @@ void Brute_Force::search_route()
 
 void Heuristic::bfs()
 {
+    std::queue<int> Q;
+    Edge pre[MAX_V]; //回溯使用的反向边记录数组
+    std::vector<int> temp; //暂存搜索到的必经点
+    std::stack<int> buf; //回溯顺序输出的辅助存储stack
+
     int beginNode = src;
     int new_beginNode = src;
     visit[src] = true;
-    std::queue<int> Q;
-    Trace record[MAX_V];
-    std::vector<int> temp; //暂存搜索到的必经点
-    std::stack<int> back_track;
+    visit[dst] = true;
+    bool done = false;
     Q.push(beginNode);
     while(!Q.empty()) {
         int cur = Q.front();
@@ -346,7 +349,7 @@ void Heuristic::bfs()
             if(!bfsVisited[e.to] && !visit[e.to]) {
                 bfsVisited[e.to] = true;
                 Q.push(e.to);
-                record[e.to] = (Trace){cur, e.id}; //记录前驱id,到达前驱的边id
+                pre[e.to] = (Edge){e.id, cur, e.cost}; //记录前驱id,到达前驱的边id
                 if(isMust[e.to])
                     temp.push_back(e.to);
             }
@@ -362,7 +365,7 @@ void Heuristic::bfs()
             //路径回溯
             while(cur != beginNode) {
                 visit[cur] = true;
-                cur = record[cur].pre;
+                cur = pre[cur].to;
             }
             visit[cur] = true;
 
@@ -376,45 +379,60 @@ void Heuristic::bfs()
             int neccesity_num = neccesity.size();
 
             //所有必经点已找到
-            if(already.size() == neccesity.size())
+            if(already.size() == neccesity.size()) {
+                done = true;
                 break;
+            }
             //否则继续以最新的必经点扩展下去
             beginNode = new_beginNode;
             Q.push(beginNode);
         }
     }
 
-    //去除已访问的点，在剩余图中求最后一个必经点到终点的最短路
-    Dijkstra(new_beginNode, dst, G, record);
+    visit[dst] = false;
+    //去除已访问的点，在剩余图中求最后一个必经点buf到终点的最短路
+    int d = Dijkstra(new_beginNode, dst, G, pre);
 
     //从终点回溯
     int cur = dst;
     while(cur != src) {
-        back_track.push(record[cur].reverse_e); //回溯一条边，并将其压栈
-        cur = record[cur].pre; //找前驱
+        buf.push(pre[cur].id); //回溯一条边，并将其压栈
+        total_cost += pre[cur].cost;
+        cur = pre[cur].to; //找前驱
     }
-    while(!back_track.empty()) {
-        int e = back_track.top();
-        back_track.pop();
+    while(!buf.empty()) {
+        int e = buf.top();
+        buf.pop();
         e_path.push_back(e);
     }
 
-    while(!back_track.empty()) back_track.pop();
+    while(!buf.empty()) buf.pop();
     cur = dst;
     while(cur != src) {
-        back_track.push(record[cur].pre);
-        cur = record[cur].pre;
+        buf.push(pre[cur].to);
+        cur = pre[cur].to;
     }
-    while(!back_track.empty()) {
-        int node = back_track.top();
-        back_track.pop();
+    while(!buf.empty()) {
+        int node = buf.top();
+        buf.pop();
         v_path.push_back(node);
     }
+
     //freopen("output.txt", "w", stdout);
+    printf("----------result----------\n");
+    if(!done) {
+        printf("neccesity node miss!\n");
+        for(std::set<int>::iterator it = remain.begin(); it != remain.end(); it++)
+            printf("%d", *it);
+        printf("\n");
+    }
+    printf("route:\n");
     for(int i = 0; i < v_path.size(); i++) {
         printf("%d->", v_path[i]);
     }
     printf("%d\n", dst);
+    printf("cost = %d\n", total_cost);
+    printf("----------result----------\n");
 
     for(int i = 0; i < e_path.size(); i++)
         record_result(e_path[i]);
@@ -426,7 +444,7 @@ int random(int x, int y)
     return x + rand()%(y - x + 1);
 }
 
-void Dijkstra(int src, int dst, std::vector<Edge> G[MAX_V], Trace record[MAX_V])
+int Dijkstra(int src, int dst, std::vector<Edge> G[MAX_V], Edge pre[MAX_V])
 {
     int D[MAX_V];
     for(int i=0; i < V; i++)
@@ -450,11 +468,12 @@ void Dijkstra(int src, int dst, std::vector<Edge> G[MAX_V], Trace record[MAX_V])
             if(!visit[e.to] && D[cur] + e.cost < D[e.to]) {
                 D[e.to] = D[cur] + e.cost;
                 Q.push(std::make_pair(D[e.to], e.to));
-                record[e.to] = (Trace){cur, e.id};
+                pre[e.to] = (Edge){e.id, cur, e.cost};
             }
         }
 
     }
+    return D[dst];
 
 }
 

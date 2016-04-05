@@ -47,6 +47,6 @@ namespace Heuristic {
 
 int random(int x, int y);
 
-void Dijkstra(int src, int dst, std::vector<Edge> G[MAX_V], Trace path[MAX_V]);
+int Dijkstra(int src, int dst, std::vector<Edge> G[MAX_V], Edge pre[MAX_V]);
 
 #endif // METHOD_H_INCLUDED
