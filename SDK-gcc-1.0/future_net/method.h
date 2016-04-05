@@ -43,6 +43,8 @@ namespace Brute_Force {
 namespace Heuristic {
 
     void bfs();
+
+    int sub_sequence_optimize(int src, int dst, int cost, std::vector<Edge> G[MAX_V], Edge pre[MAX_V]);
 }
 
 int random(int x, int y);

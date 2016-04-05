@@ -330,11 +330,12 @@ void Brute_Force::search_route()
 
 void Heuristic::bfs()
 {
+    start = clock();
     std::queue<int> Q;
     Edge pre[MAX_V]; //回溯使用的反向边记录数组
     std::vector<int> temp; //暂存搜索到的必经点
     std::stack<int> buf; //回溯顺序输出的辅助存储stack
-
+    std::vector<int> subSeq; //局部优化子序列
     int beginNode = src;
     int new_beginNode = src;
     visit[src] = true;
@@ -396,6 +397,7 @@ void Heuristic::bfs()
     //从终点回溯
     int cur = dst;
     while(cur != src) {
+        visit[cur] = true;
         buf.push(pre[cur].id); //回溯一条边，并将其压栈
         total_cost += pre[cur].cost;
         cur = pre[cur].to; //找前驱
@@ -409,9 +411,10 @@ void Heuristic::bfs()
     while(!buf.empty()) buf.pop();
     cur = dst;
     while(cur != src) {
-        buf.push(pre[cur].to);
+        buf.push(cur);//回溯前驱，并将其压栈
         cur = pre[cur].to;
     }
+    buf.push(cur);
     while(!buf.empty()) {
         int node = buf.top();
         buf.pop();
@@ -430,17 +433,83 @@ void Heuristic::bfs()
     for(int i = 0; i < v_path.size(); i++) {
         printf("%d->", v_path[i]);
     }
-    printf("%d\n", dst);
+    printf("Finish!\n");
     printf("cost = %d\n", total_cost);
     printf("----------result----------\n");
 
     for(int i = 0; i < e_path.size(); i++)
         record_result(e_path[i]);
 
+    //结果调优
+    int new_cost, cost;
+    for(;;) {
+    //超时强制退出
+    stop = clock();
+    if((double)(stop - start)/CLOCKS_PER_SEC > 8.5)
+        break;
+    int head, tail;
+    head = random(0, v_path.size()-2);
+    //printf("head = %d\n", head);
+    tail = head + 1;
+    while(!isMust[v_path[tail]]) tail++;
+    //对[head, tail]段进行优化
+    int cost = 0;
+    int v = v_path[tail];
+    while(v != v_path[head]){
+        cost += pre[v].cost;
+        visit[v] = false;
+        v = pre[v].to;
+    }
+    visit[v] = false;
+    new_cost = sub_sequence_optimize(v_path[head], v_path[tail], cost, G, pre);
+    if(new_cost < cost) {
+        printf("optimizing....\n");
+        //对e_path[head, tail-1]进行置换il
+        for(int i = tail; i > head; i--) {
+            e_path[i - 1] = pre[v_path[i]].id;
+        }
+        total_cost -= cost - new_cost;
+    }
+    }
+    printf("new cost = %d\n", total_cost);
+
 }
 
+int Heuristic::sub_sequence_optimize(int src, int dst, int cost, std::vector<Edge> G[MAX_V], Edge pre[MAX_V])
+{
+    int D[MAX_V];
+    for(int i=0; i < V; i++)
+        D[i] = INF;
+    D[src] = 0;
+    D[dst] = cost;
+
+    std::priority_queue<pair_i_i, std::vector<pair_i_i>, std::greater<pair_i_i> > Q;
+
+    Q.push(std::make_pair(D[src], src));
+    while(!Q.empty()) {
+        pair_i_i x = Q.top();
+        Q.pop();
+        int cur = x.second;
+        if(x.first != D[cur]) continue;
+        if( cur == dst)
+            break;
+
+        for(int i = 0; i < G[cur].size(); i++) {
+            Edge &e = G[cur][i];
+            //松弛操作
+            if(!visit[e.to] && D[cur] + e.cost < D[e.to]) {
+                D[e.to] = D[cur] + e.cost;
+                Q.push(std::make_pair(D[e.to], e.to));
+                pre[e.to] = (Edge){e.id, cur, e.cost};
+            }
+        }
+    }
+    return D[dst];
+
+}
 int random(int x, int y)
 {
+    srand((unsigned) time(NULL));
     return x + rand()%(y - x + 1);
 }
 
