@@ -338,14 +338,14 @@ void Heuristic::bfs()
     std::vector<int> temp; //暂存搜索到的必经点
     std::stack<int> back_track;
     Q.push(beginNode);
-    bool success = false;
-    while(!Q.empty() && !success) {
+    while(!Q.empty()) {
         int cur = Q.front();
         Q.pop();
         for(int i = 0; i < G[cur].size(); i++) {
             Edge &e = G[cur][i];
             if(!bfsVisited[e.to] && !visit[e.to]) {
                 bfsVisited[e.to] = true;
+                Q.push(e.to);
                 record[e.to] = (Trace){cur, e.id}; //记录前驱id,到达前驱的边id
                 if(isMust[e.to])
                     temp.push_back(e.to);
@@ -361,38 +361,63 @@ void Heuristic::bfs()
             //以该必经点为新的扩展起点
             //路径回溯
             while(cur != beginNode) {
-                back_track.push(record[cur].reverse_e);
                 visit[cur] = true;
                 cur = record[cur].pre;
             }
+            visit[cur] = true;
 
             //清空暂存
             temp.clear();
             //清空队列
             while(!Q.empty()) Q.pop();
             memset(bfsVisited, 0, sizeof(bfsVisited));
+
+            int already_num = already.size();
+            int neccesity_num = neccesity.size();
+
             //所有必经点已找到
             if(already.size() == neccesity.size())
                 break;
             //否则继续以最新的必经点扩展下去
-            Q.push(new_beginNode);
+            beginNode = new_beginNode;
+            Q.push(beginNode);
         }
     }
 
-    //去除已访问的点，构造剩余图
-    std::vector<Edge> _G[MAX_V];
-    for(int v = 0; v < V; v++)
-        _G[v].assign(G[v].begin(), G[v].end());
-    for(int v = 0; v < V; v++) {
-        if(visit[v])
-            for(int i = 0; i < _G[v].size(); i++)
-                _G[v][i].cost = INF;
+    //去除已访问的点，在剩余图中求最后一个必经点到终点的最短路
+    Dijkstra(new_beginNode, dst, G, record);
+
+    //从终点回溯
+    int cur = dst;
+    while(cur != src) {
+        back_track.push(record[cur].reverse_e); //回溯一条边，并将其压栈
+        cur = record[cur].pre; //找前驱
+    }
+    while(!back_track.empty()) {
+        int e = back_track.top();
+        back_track.pop();
+        e_path.push_back(e);
     }
 
-    for(int i = 0; i < _G[new_beginNode].size(); i++)
-        _G[new_beginNode][i].cost = G[new_beginNode][i].cost;
+    while(!back_track.empty()) back_track.pop();
+    cur = dst;
+    while(cur != src) {
+        back_track.push(record[cur].pre);
+        cur = record[cur].pre;
+    }
+    while(!back_track.empty()) {
+        int node = back_track.top();
+        back_track.pop();
+        v_path.push_back(node);
+    }
+    //freopen("output.txt", "w", stdout);
+    for(int i = 0; i < v_path.size(); i++) {
+        printf("%d->", v_path[i]);
+    }
+    printf("%d\n", dst);
 
-    Dijkstra(new_beginNode, dst, _G, record);
+    for(int i = 0; i < e_path.size(); i++)
+        record_result(e_path[i]);
 
 }
 
@@ -401,7 +426,7 @@ int random(int x, int y)
     return x + rand()%(y - x + 1);
 }
 
-void Dijkstra(int src, int dst, std::vector<Edge> G[MAX_V], Trace path[MAX_V])
+void Dijkstra(int src, int dst, std::vector<Edge> G[MAX_V], Trace record[MAX_V])
 {
     int D[MAX_V];
     for(int i=0; i < V; i++)
@@ -422,10 +447,10 @@ void Dijkstra(int src, int dst, std::vector<Edge> G[MAX_V], Trace path[MAX_V])
         for(int i = 0; i < G[cur].size(); i++) {
             Edge &e = G[cur][i];
             //松弛操作
-            if(D[cur] + e.cost < D[e.to]) {
+            if(!visit[e.to] && D[cur] + e.cost < D[e.to]) {
                 D[e.to] = D[cur] + e.cost;
                 Q.push(std::make_pair(D[e.to], e.to));
-                path[e.to] = (Trace){cur, e.id};
+                record[e.to] = (Trace){cur, e.id};
             }
         }
 
