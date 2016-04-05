@@ -1,6 +1,8 @@
 #ifndef METHOD_H_INCLUDED
 #define METHOD_H_INCLUDED
 
+#include <vector>
+
 #define MAX_V 600
 #define INF 999999
 
@@ -10,6 +12,12 @@ typedef struct Edge
     int to;
     int cost;
 }Edge;
+
+typedef struct Trace
+{
+    int pre; //前驱节点
+    int reverse_e; //反向回路
+}Trace;
 
 typedef int DistMatrix[MAX_V][MAX_V];
 
@@ -33,34 +41,12 @@ namespace Brute_Force {
 }
 
 namespace Heuristic {
-    typedef struct State
-    {
-        int cur;//当前节点
-        int already;//已经过必经点的个数
-        int steps;
-        int pre; //前驱节点
-        int rEdge; //反向回路
-
-        bool operator < (const State &s) const //必经点数多优先
-        {
-            if(already < s.already) return true;
-            else if(already == s.already) {
-                if(steps > s.steps)
-                    return true;
-            }
-            return false;
-        }
-        State(){}
-        State(int _id, int _already = 0, int _steps = 0, int _pre = -1, int _rEdge = -1):
-                cur(_id), already(_already), steps(_steps), pre(_pre), rEdge(_rEdge)
-        {}
-    }State;
 
     void bfs();
 }
 
-int random(int x, int y)
-{
-    return x + rand()%(y - x + 1);
-}
+int random(int x, int y);
+
+void Dijkstra(int src, int dst, std::vector<Edge> G[MAX_V], Trace path[MAX_V]);
+
 #endif // METHOD_H_INCLUDED

@@ -5,12 +5,14 @@
 #include <string> //string
 #include <set>
 #include <vector>
+#include <stack>
 #include <map>
 #include <utility>
 #include <queue>
 #include <string.h> //memset
 #include <time.h>
 
+typedef std::pair<int, int> pair_i_i;
 
 std::vector<Edge> G[MAX_V]; //图的邻接表
 std::vector<Edge> rG[MAX_V]; //反向边邻接表
@@ -37,6 +39,8 @@ int optimal_cost = INF;
 int start, stop;
 
 DistMatrix dist; //距离矩阵
+
+bool bfsVisited[MAX_V];
 
 //主要函数实现
 //添加边
@@ -326,46 +330,105 @@ void Brute_Force::search_route()
 
 void Heuristic::bfs()
 {
-    State _begin = State(src);
-    std::priority_queue<State, std::vector<State>, std::less<State> > OPEN;
-    std::map<int, State> CLOSED;
-
+    int beginNode = src;
+    int new_beginNode = src;
+    visit[src] = true;
+    std::queue<int> Q;
+    Trace record[MAX_V];
+    std::vector<int> temp; //暂存搜索到的必经点
+    std::stack<int> back_track;
+    Q.push(beginNode);
     bool success = false;
-    OPEN.push(_begin);
-    while(!OPEN.empty() && !success) {
-        //从open移除
-        State father = OPEN.top();
-        OPEN.pop();
-        //bfs扩展遇到终点了，并且必经点访问完毕！
-        if(father.cur == dst && father.already == neccesity.size()) {
-            success = true;
-            break;
-        }
-        //加入close
-        int cur = father.cur;
-        CLOSED.insert(std::make_pair(cur, father));
-        //状态扩展
+    while(!Q.empty() && !success) {
+        int cur = Q.front();
+        Q.pop();
         for(int i = 0; i < G[cur].size(); i++) {
             Edge &e = G[cur][i];
-            State child(e.to);
-            child.steps = father.steps++;
-            child.already = father.already;
-            child.pre = cur;
-            child.rEdge = e.id;
-            if(isMust[e.to])
-                child.already ++;
-
-            //如果在close中
-            if(CLOSED.find(e.to) != CLOSED.end()) {
-                //但是新节点的必经点指标更优
-                if(child.already > CLOSED[e.to].already) {
-                    CLOSED.erase(e.to);
-                }
+            if(!bfsVisited[e.to] && !visit[e.to]) {
+                bfsVisited[e.to] = true;
+                record[e.to] = (Trace){cur, e.id}; //记录前驱id,到达前驱的边id
+                if(isMust[e.to])
+                    temp.push_back(e.to);
+            }
+        }
+        //bfs找到必经点
+        if(temp.size() > 0) {
+            //如果遇到多个必经点,随机选择一个
+            cur = temp.at(random(0, temp.size()-1) );
+            new_beginNode = cur;
+            remain.erase(cur);
+            already.insert(cur);
+            //以该必经点为新的扩展起点
+            //路径回溯
+            while(cur != beginNode) {
+                back_track.push(record[cur].reverse_e);
+                visit[cur] = true;
+                cur = record[cur].pre;
             }
 
-            //加入open,即使队列有相同元素，优先级覆盖
-            OPEN.push(child);
+            //清空暂存
+            temp.clear();
+            //清空队列
+            while(!Q.empty()) Q.pop();
+            memset(bfsVisited, 0, sizeof(bfsVisited));
+            //所有必经点已找到
+            if(already.size() == neccesity.size())
+                break;
+            //否则继续以最新的必经点扩展下去
+            Q.push(new_beginNode);
         }
+    }
+
+    //去除已访问的点，构造剩余图
+    std::vector<Edge> _G[MAX_V];
+    for(int v = 0; v < V; v++)
+        _G[v].assign(G[v].begin(), G[v].end());
+    for(int v = 0; v < V; v++) {
+        if(visit[v])
+            for(int i = 0; i < _G[v].size(); i++)
+                _G[v][i].cost = INF;
+    }
+
+    for(int i = 0; i < _G[new_beginNode].size(); i++)
+        _G[new_beginNode][i].cost = G[new_beginNode][i].cost;
+
+    Dijkstra(new_beginNode, dst, _G, record);
+
+}
+
+int random(int x, int y)
+{
+    return x + rand()%(y - x + 1);
+}
+
+void Dijkstra(int src, int dst, std::vector<Edge> G[MAX_V], Trace path[MAX_V])
+{
+    int D[MAX_V];
+    for(int i=0; i < V; i++)
+        D[i] = INF;
+    D[src] = 0;
+
+    std::priority_queue<pair_i_i, std::vector<pair_i_i>, std::greater<pair_i_i> > Q;
+
+    Q.push(std::make_pair(D[src], src));
+    while(!Q.empty()) {
+        pair_i_i x = Q.top();
+        Q.pop();
+        int cur = x.second;
+        if(x.first != D[cur]) continue;
+        if( cur == dst)
+            break;
+
+        for(int i = 0; i < G[cur].size(); i++) {
+            Edge &e = G[cur][i];
+            //松弛操作
+            if(D[cur] + e.cost < D[e.to]) {
+                D[e.to] = D[cur] + e.cost;
+                Q.push(std::make_pair(D[e.to], e.to));
+                path[e.to] = (Trace){cur, e.id};
+            }
+        }
+
     }
 
 }
