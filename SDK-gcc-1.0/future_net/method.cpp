@@ -457,6 +457,8 @@ void Heuristic::bfs()
         int head, tail;
         tail = random(1, v_path.size()-1); //从起点和终点之间任选一个关节,往前找到最近的必经点，作为优化子序列
         head = tail - 1;
+        while(!isMust[v_path[tail]] && v_path[tail] != dst)
+            tail ++;
         while(!isMust[v_path[head]] && v_path[head] != src)
             head --;
 
@@ -528,6 +530,9 @@ void Heuristic::bfs()
     for(int i = 0; i < v_path.size(); i++)
         printf("%d->", v_path[i]);
     printf("Finish!\n");
+
+    for(std::vector<int>::iterator it = e_path.begin(); it != e_path.end(); it++)
+        record_result(*it);
 
 }
 
