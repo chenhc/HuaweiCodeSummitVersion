@@ -29,9 +29,7 @@ std::set<int> remain; //待访问必经点
 bool isMust[MAX_V]; //是否为必经点
 
 std::vector<int> v_path; //节点表示的路径
-std::list<int> v_list;
 std::vector<int> e_path; //边表示的路径
-std::list<int> e_list;
 bool visit[MAX_V]; //已访问节点标记
 std::vector<int> optimal_e_path;
 std::vector<int> optimal_v_path;
@@ -407,7 +405,7 @@ void Heuristic::bfs()
     while(!buf.empty()) {
         int e = buf.top();
         buf.pop();
-        e_list.push_back(e);
+        e_path.push_back(e);
     }
 
     while(!buf.empty()) buf.pop();
@@ -421,7 +419,7 @@ void Heuristic::bfs()
     while(!buf.empty()) {
         int node = buf.top();
         buf.pop();
-        v_list.push_back(node);
+        v_path.push_back(node);
     }
 
     //freopen("output.txt", "w", stdout);
@@ -436,16 +434,16 @@ void Heuristic::bfs()
 //    for(int i = 0; i < v_path.size(); i++) {
 //        printf("%d->", v_path[i]);
 //    }
-    for(std::list<int>::iterator it = v_list.begin(); it != v_list.end(); it++)
-        printf("%d->", *it);
+    for(int i = 0; i < v_path.size(); i++)
+        printf("%d->", v_path[i]);
     printf("Finish!\n");
     printf("cost = %d\n", total_cost);
     printf("----------result----------\n");
 
 //    for(int it = 0; i < e_path.size(); i++)
 //        record_result(e_path[i]);
-    for(std::list<int>::iterator it = e_list.begin(); it != e_list.end(); it++)
-        record_result(*it);
+//    for(std::list<int>::iterator it = e_list.begin(); it != e_list.end(); it++)
+//        record_result(*it);
 
 
     //结果调优
@@ -457,10 +455,11 @@ void Heuristic::bfs()
             break;
 
         int head, tail;
-        head = random(0, v_path.size()-2);
-        tail = head + 1;
-        while(!isMust[v_path[tail]] && v_path[tail] != dst)
-            tail++;
+        tail = random(1, v_path.size()-1); //从起点和终点之间任选一个关节,往前找到最近的必经点，作为优化子序列
+        head = tail - 1;
+        while(!isMust[v_path[head]] && v_path[head] != src)
+            head --;
+
         //对[head, tail]段进行优化
         cost = 0;
         int v = v_path[tail];
@@ -469,32 +468,66 @@ void Heuristic::bfs()
             visit[v] = false;
             v = pre[v].to;
         }
+        //求子序列优化后的新代价
         new_cost = sub_sequence_optimize(v_path[head], v_path[tail], cost, G, pre);
+        //如果新代价更优
         if(new_cost < cost) {
             printf("optimizing....\n");
-            //对e_path[head, tail-1]进行置换
-            int v = v_path[tail], i = tail - 1;
+            int v = v_path[tail];
             while(v != v_path[head]) {
                 visit[v] = true;
-                //e_path[i] = pre[v].id;
                 v = pre[v].to;
-                //v_path[i] = pre[v].to;
-                i --;
             }
             visit[v] = true;
             total_cost -= cost - new_cost;//更新总代价
+            printf("new cost = %d\n", total_cost);
         }
+        //没有改善
         else {
-            int v = v_path[tail], i = tail - 1;
+            int v = v_path[tail];
             while(v != v_path[head]) {
                 visit[v] = true;
                 v = pre[v].to;
-                i --;
             }
             visit[v] = true;
         }
     }
-    printf("new cost = %d\n", total_cost);
+
+    printf("final cost = %d\n", total_cost);
+    while(!buf.empty()) buf.pop();
+    e_path.clear();
+    v_path.clear();
+    //从终点回溯
+    cur = dst;
+    while(cur != src) {
+        visit[cur] = true;
+        buf.push(pre[cur].id); //回溯一条边，并将其压栈
+        total_cost += pre[cur].cost;
+        cur = pre[cur].to; //找前驱
+    }
+    while(!buf.empty()) {
+        int e = buf.top();
+        buf.pop();
+        e_path.push_back(e);
+    }
+
+    while(!buf.empty()) buf.pop();
+    cur = dst;
+    while(cur != src) {
+        buf.push(cur);//回溯前驱，并将其压栈
+        cur = pre[cur].to;
+    }
+    buf.push(cur);//src
+
+    while(!buf.empty()) {
+        int node = buf.top();
+        buf.pop();
+        v_path.push_back(node);
+    }
+
+    for(int i = 0; i < v_path.size(); i++)
+        printf("%d->", v_path[i]);
+    printf("Finish!\n");
 
 }
 
