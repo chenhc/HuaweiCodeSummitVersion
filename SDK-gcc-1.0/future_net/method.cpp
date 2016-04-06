@@ -448,6 +448,7 @@ void Heuristic::bfs()
 
     //结果调优
     int new_cost = INF, cost = 0;
+    int last = -1;
     for(;;) {
     //超时强制退出
         stop = clock();
@@ -459,9 +460,12 @@ void Heuristic::bfs()
         head = tail - 1;
         while(!isMust[v_path[tail]] && v_path[tail] != dst)
             tail ++;
+        if(v_path[tail] == last)
+            continue;
+        last = v_path[tail];
+
         while(!isMust[v_path[head]] && v_path[head] != src)
             head --;
-
         //对[head, tail]段进行优化
         cost = 0;
         int v = v_path[tail];
