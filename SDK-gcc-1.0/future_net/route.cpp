@@ -11,12 +11,11 @@ extern int V, E;
 void search_route(char *topo[5000], int edge_num, char *demand)
 {
     init_Graph(topo, edge_num, demand);
-//    if(V <= 100)
-//        Brute_Force::search_route();
-//    else
+    if(V <= 120)
+        Brute_Force::search_route();
+    else
 //        SCC::search_route();
     Heuristic::bfs();
-
 }
 
 

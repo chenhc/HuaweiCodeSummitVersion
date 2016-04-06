@@ -342,18 +342,26 @@ void Heuristic::bfs()
     visit[dst] = true;
     bool done = false;
     Q.push(beginNode);
+    std::vector<int> child;
     while(!Q.empty()) {
         int cur = Q.front();
         Q.pop();
+        child.clear();
         for(int i = 0; i < G[cur].size(); i++) {
             Edge &e = G[cur][i];
             if(!bfsVisited[e.to] && !visit[e.to]) {
                 bfsVisited[e.to] = true;
-                Q.push(e.to);
+                child.push_back(e.to);
+                //Q.push(e.to);
                 pre[e.to] = (Edge){e.id, cur, e.cost}; //记录前驱id,到达前驱的边id
                 if(isMust[e.to])
                     temp.push_back(e.to);
             }
+        }
+        while(!child.empty()) {
+            int i = random(0, child.size()-1);
+            Q.push(child[i]);
+            child.erase(child.begin()+i);
         }
         //bfs找到必经点
         if(temp.size() > 0) {
@@ -448,15 +456,18 @@ void Heuristic::bfs()
 
     //结果调优
     int new_cost = INF, cost = 0;
-    int last = -1;
+    //int last = -1;
+    int tail = dst, head;
     for(;;) {
+        head = pre[tail].to;
+        if(tail == src) break;
     //超时强制退出
         stop = clock();
-        if((double)(stop - start)/CLOCKS_PER_SEC > 8.5)
+        if((double)(stop - start)/CLOCKS_PER_SEC > 6)
             break;
 
-        int head, tail;
-        tail = random(1, v_path.size()-1); //从起点和终点之间任选一个关节,往前找到最近的必经点，作为优化子序列
+        //int head, tail;
+        /*tail = random(1, v_path.size()-1); //从起点和终点之间任选一个关节,往前找到最近的必经点，作为优化子序列
         head = tail - 1;
         while(!isMust[v_path[tail]] && v_path[tail] != dst)
             tail ++;
@@ -465,22 +476,25 @@ void Heuristic::bfs()
         last = v_path[tail];
 
         while(!isMust[v_path[head]] && v_path[head] != src)
-            head --;
+            head --;*/
+        while(!isMust[head] && head !=src)
+            head = pre[head].to;
         //对[head, tail]段进行优化
         cost = 0;
-        int v = v_path[tail];
-        while(v != v_path[head]){
+       // int v = v_path[tail];
+        int v = tail;
+        while(v != head){
             cost += pre[v].cost;
             visit[v] = false;
             v = pre[v].to;
         }
         //求子序列优化后的新代价
-        new_cost = sub_sequence_optimize(v_path[head], v_path[tail], cost, G, pre);
+        new_cost = sub_sequence_optimize(head, tail, cost, G, pre);
         //如果新代价更优
         if(new_cost < cost) {
             printf("optimizing....\n");
-            int v = v_path[tail];
-            while(v != v_path[head]) {
+            int v = tail;
+            while(v != head) {
                 visit[v] = true;
                 v = pre[v].to;
             }
@@ -490,13 +504,14 @@ void Heuristic::bfs()
         }
         //没有改善
         else {
-            int v = v_path[tail];
-            while(v != v_path[head]) {
+            int v = tail;
+            while(v != head) {
                 visit[v] = true;
                 v = pre[v].to;
             }
             visit[v] = true;
         }
+        tail = head;
     }
 
     printf("final cost = %d\n", total_cost);
